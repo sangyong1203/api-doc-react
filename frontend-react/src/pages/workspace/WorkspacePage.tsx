@@ -10,11 +10,17 @@ import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
 import { ResponseViewer } from '@/features/request-runner/components/ResponseViewer'
 import { WorkspaceTabs } from '@/features/workspace/components/WorkspaceTabs'
 import { createSampleResponse, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
-import type { SampleOutcome, SampleRequest, WorkspaceTab } from '@/features/workspace/types'
+import type { RequestField, SampleOutcome, SampleRequest, WorkspaceTab } from '@/features/workspace/types'
 import '@/styles/workspace.css'
 
 function createTab(request: SampleRequest): WorkspaceTab {
-  return { request, saved: request, execution: { status: 'idle' } }
+  return { request, saved: request, execution: { status: 'idle' }, requestSnapshot: null }
+}
+
+function copyActiveFields(fields: RequestField[]): Array<Pick<RequestField, 'name' | 'value'>> {
+  return fields
+    .filter((field) => field.enabled && field.name.trim())
+    .map(({ name, value }) => ({ name, value }))
 }
 
 export function WorkspacePage() {
@@ -68,7 +74,14 @@ export function WorkspacePage() {
       return
     }
     const { request } = activeTab
-    updateTab(request.id, (tab) => ({ ...tab, execution: { status: 'running' } }))
+    // 실행 이후 편집과 독립적으로 당시 본문·파라미터·헤더를 유지합니다.
+    const requestSnapshot = {
+      body: request.body,
+      pathParams: copyActiveFields(request.pathParams),
+      queryParams: copyActiveFields(request.queryParams),
+      headers: copyActiveFields(request.headers),
+    }
+    updateTab(request.id, (tab) => ({ ...tab, execution: { status: 'running' }, requestSnapshot }))
     const timer = setTimeout(() => {
       timers.current.delete(request.id)
       updateTab(request.id, (tab) => ({ ...tab, execution: outcome === 'network-error'
@@ -133,7 +146,7 @@ export function WorkspacePage() {
                   request={activeTab.request}
                   onChange={(request) => updateTab(request.id, (tab) => ({ ...tab, request }))}
                 />
-                <ResponseViewer execution={activeTab.execution} />
+                <ResponseViewer execution={activeTab.execution} requestSnapshot={activeTab.requestSnapshot} />
               </div>
             </TabsContent>
           ) : (

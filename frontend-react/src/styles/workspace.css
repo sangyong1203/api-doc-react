@@ -49,12 +49,14 @@
 .body-warning, .body-hint { margin-top: 12px; }
 .response-viewer { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .response-heading { flex-wrap: wrap; }
-.response-title { display: flex; align-items: center; gap: 8px; }
-.response-metrics { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.response-tabs, .response-error { margin-top: 16px; }
-.response-tabs { flex: 1; min-height: 0; }
-.response-tabs > [role="tablist"], .response-heading { flex-shrink: 0; }
-.response-tabs > [role="tabpanel"] { min-height: 0; overflow: auto; }
+.response-metrics { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.response-section-divider { flex-shrink: 0; }
+.response-error { margin-top: 16px; }
+.response-view-tabs { flex: 1; min-height: 0; }
+.response-view-content { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.response-view-content[data-state="inactive"] { display: none; }
+.response-heading { flex-shrink: 0; }
+.exchange-data-sections { display: flex; flex-direction: column; gap: 12px; }
 .response-error { overflow: auto; }
 .response-code { padding: 12px 0; }
 .workspace-empty { overflow-y: auto; }

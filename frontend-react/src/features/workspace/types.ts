@@ -35,8 +35,16 @@ export type ExecutionState =
   | { status: 'error'; message: string }
   | { status: 'complete'; response: SampleResponse }
 
+export type RequestSnapshot = {
+  body: string
+  pathParams: Array<Pick<RequestField, 'name' | 'value'>>
+  queryParams: Array<Pick<RequestField, 'name' | 'value'>>
+  headers: Array<Pick<RequestField, 'name' | 'value'>>
+}
+
 export type WorkspaceTab = {
   request: SampleRequest
   saved: SampleRequest
   execution: ExecutionState
+  requestSnapshot: RequestSnapshot | null
 }
