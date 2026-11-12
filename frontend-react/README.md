@@ -28,6 +28,28 @@ npm run dev
 
 경로 별칭 `@/`는 `src/`를 가리킵니다. `components.json`에는 shadcn/ui 경로와 스타일 설정을 관리합니다. 운영 호스팅에서는 React Router 경로를 직접 열거나 새로고침해도 `index.html`로 연결되도록 설정합니다.
 
+## shadcn 스타일 리셋
+
+`frontend-react` 폴더에서 다음 명령을 실행합니다. 현재 프리셋은 `b1sAmVzcG`이며 Radix 기반의 `radix-nova` 스타일을 사용합니다.
+
+```powershell
+npx shadcn@latest init --preset b1sAmVzcG --base radix --template vite --pointer --force --reinstall
+```
+
+- `--preset`: 적용할 프리셋 ID. 다른 스타일로 바꾸려면 이 값을 변경합니다.
+- `--base radix --template vite`: 현재 프로젝트의 UI 기반과 프레임워크를 지정합니다.
+- `--pointer`: 버튼에 포인터 커서를 적용합니다.
+- `--force`: 기존 shadcn 설정을 덮어씁니다.
+- `--reinstall`: 이미 추가한 공통 UI 컴포넌트를 새 프리셋으로 재생성합니다.
+
+테마와 폰트도 해당 프리셋으로 맞추려면 이어서 실행합니다.
+
+```powershell
+npx shadcn@latest apply b1sAmVzcG --only theme,font --yes
+```
+
+리셋 후 `npm run lint`와 `npm run build`로 확인합니다. 생성된 컴포넌트의 미사용 variant export가 `react-refresh/only-export-components` 규칙에 걸리면 해당 export만 정리합니다. 작업 화면의 구조 CSS와 기본 다크 모드 설정은 별도로 유지됩니다.
+
 ## 폴더 구조
 
 기능 중심 구조를 사용합니다. 아래 트리는 역할과 배치 기준이며, 파일과 폴더는 해당 작업이 필요할 때 생성합니다.

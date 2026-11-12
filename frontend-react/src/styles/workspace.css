@@ -1,0 +1,85 @@
+/* 화면 배치·크기·스크롤만 관리하며, 컨트롤의 외형은 shadcn 프리셋을 사용합니다. */
+.workspace-page { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.workspace-header { display: flex; align-items: center; gap: 12px; padding: 8px 16px; flex-wrap: wrap; }
+.workspace-brand, .workspace-name { display: flex; align-items: center; gap: 8px; }
+.workspace-brand > svg, .workspace-name > svg { width: 20px; height: 20px; flex-shrink: 0; }
+.header-divider { align-self: stretch; height: auto; }
+.environment-picker { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.workspace-body { display: grid; grid-template-columns: 280px auto minmax(0, 1fr); flex: 1; min-height: 0; }
+.collection-sidebar { display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow-y: auto; padding: 20px 16px; }
+.sidebar-heading, .fields-heading, .request-heading, .body-heading, .response-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.collection-title { display: flex; align-items: center; gap: 8px; }
+.collection-title > svg { width: 24px; height: 24px; flex-shrink: 0; }
+.collection-folder { display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 12px; }
+.folder-toggle, .collection-request { width: 100%; justify-content: flex-start; }
+.collection-request { padding-left: 16px; }
+.collection-request-name { overflow: hidden; text-overflow: ellipsis; }
+.workspace-main { min-width: 0; min-height: 0; gap: 0; }
+.workspace-tab-bar { display: flex; align-items: center; gap: 8px; padding: 0 8px; }
+.workspace-tabs-scroll { overflow-x: auto; overflow-y: hidden; min-width: 0; padding-bottom: 4px; }
+.workspace-tab { display: flex; align-items: center; flex-shrink: 0; height: 100%; }
+.workspace-tab-select { flex: none; }
+.tab-close { flex-shrink: 0; }
+.tabs-empty { padding: 8px; }
+.workspace-content { min-height: 0; width: 100%; overflow-y: auto; }
+.request-editor { padding: 16px 24px 4px; }
+.request-heading { margin-bottom: 12px; flex-wrap: wrap; }
+.request-identity { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.request-url-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.request-save-controls, .request-run-controls { display: flex; align-items: center; gap: 8px; }
+.request-run-controls { flex-shrink: 0; }
+.method-select { flex-shrink: 0; min-width: 112px; }
+.url-input { flex: 1; min-width: 0; }
+.request-section-content { padding-top: 4px; }
+.fields-heading, .body-heading { margin-bottom: 4px; }
+.fields-table { min-width: 420px; table-layout: fixed; }
+.field-action-cell { width: 48px; }
+.field-input { width: 100%; min-width: 0; }
+.body-warning, .body-hint { margin-top: 12px; }
+.response-viewer { position: relative; padding: 4px 24px 16px; }
+.response-title { display: flex; align-items: center; gap: 8px; }
+.response-metrics { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.response-tabs, .response-error { margin-top: 16px; }
+.response-code { max-height: 360px; overflow: auto; padding: 12px 0; }
+.workspace-statusbar { display: flex; gap: 16px; align-items: center; padding: 12px 16px; flex-wrap: wrap; }
+.workspace-notice { min-width: 0; flex: 1; }
+.open-tab-count { margin-left: auto; }
+.workspace-empty { overflow-y: auto; }
+
+/* 프리셋에 대응 variant가 없는 메서드·성공 상태의 기존 의미별 색상입니다. */
+.method-get, .method-head, .status-success { color: #147d58; }
+.method-post { color: #9b6710; }
+.method-put, .method-patch { color: #396ca3; }
+.method-options { color: #7957a2; }
+
+/* CodeMirror는 shadcn 대상이 아니므로 테마 토큰 연결만 유지합니다. */
+.json-editor .cm-editor { background: var(--card); color: var(--card-foreground); }
+.json-editor .cm-gutters { background: var(--sidebar); color: var(--muted-foreground); border-color: var(--border); }
+.json-editor .cm-activeLine, .json-editor .cm-activeLineGutter { background: var(--accent); }
+.json-editor .cm-cursor { border-left-color: var(--foreground); }
+
+@media (max-width: 1000px) {
+  .workspace-body { grid-template-columns: 240px auto minmax(0, 1fr); }
+  .workspace-header { padding-inline: 16px; }
+  .request-url-bar { flex-wrap: wrap; }
+  .request-run-controls { margin-left: auto; }
+}
+@media (max-width: 700px) {
+  .workspace-page { height: auto; min-height: 100dvh; overflow: visible; }
+  .workspace-header { padding: 8px 12px; }
+  .header-divider { display: none; }
+  .environment-picker { width: 100%; justify-content: space-between; }
+  .workspace-body { display: flex; flex-direction: column; }
+  .collection-sidebar { max-height: 280px; padding: 12px; }
+  .workspace-sidebar-divider { display: none; }
+  .collection-title { display: none; }
+  .collection-folder { margin-bottom: 4px; }
+  .request-editor { padding: 12px 16px 4px; }
+  .response-viewer { padding: 4px 16px 12px; }
+  .request-url-bar { flex-wrap: wrap; }
+  .method-select { min-width: 100px; }
+  .request-run-controls { width: 100%; }
+  .request-send { flex: 1; }
+  .response-heading { align-items: flex-start; flex-direction: column; }
+  .workspace-notice { flex-basis: 100%; order: 3; }
+}
