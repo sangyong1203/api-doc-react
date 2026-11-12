@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Braces, FolderOpen, Unplug } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { Braces, FolderOpen } from 'lucide-react'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
@@ -23,7 +22,6 @@ export function WorkspacePage() {
   const [tabs, setTabs] = useState<WorkspaceTab[]>([createTab(SAMPLE_REQUESTS[0])])
   const [activeId, setActiveId] = useState<string | null>(SAMPLE_REQUESTS[0].id)
   const [environment, setEnvironment] = useState('local')
-  const [notice, setNotice] = useState('')
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const activeTab = tabs.find((tab) => tab.request.id === activeId)
 
@@ -126,7 +124,6 @@ export function WorkspacePage() {
                   updateTab(activeTab.request.id, (tab) => ({ ...tab, saved: tab.request }))
                   setRequests((current) => current.map((request) =>
                     request.id === activeTab.request.id ? activeTab.request : request))
-                  setNotice(`${activeTab.request.name}: 메모리에 저장했습니다.`)
                 }}
                 onRun={runSample}
                 onCancel={cancelSample}
@@ -150,15 +147,6 @@ export function WorkspacePage() {
           )}
         </Tabs>
       </div>
-      <Separator />
-      <footer className="workspace-statusbar">
-        <Badge className="agent-status" variant="outline"><Unplug aria-hidden="true" />에이전트 미연결</Badge>
-        <div className="workspace-notice">
-          <p className="workspace-demo-notice">샘플 응답은 입력값과 무관한 고정 예시이며 시간·크기는 실측값이 아닙니다. 실제 호출·파일 저장은 수행하지 않으며 새로고침 시 변경이 초기화됩니다.</p>
-          <span className="workspace-action-notice" role="status">{notice}</span>
-        </div>
-        <Badge className="open-tab-count" variant="secondary">{tabs.length}개 탭</Badge>
-      </footer>
     </main>
   )
 }

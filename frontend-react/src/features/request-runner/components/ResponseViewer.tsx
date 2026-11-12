@@ -19,8 +19,7 @@ export function ResponseViewer({ execution }: { execution: ExecutionState }) {
             {execution.status === 'complete' && (
               <div className="response-metrics">
                 <Badge
-                  variant={execution.response.status >= 400 ? 'destructive' : 'outline'}
-                  className={execution.response.status < 400 ? 'status-success' : undefined}
+                  variant={execution.response.status >= 400 ? 'error' : 'success'}
                 >
                   {execution.response.status} {execution.response.statusText}
                 </Badge>
@@ -51,7 +50,7 @@ export function ResponseViewer({ execution }: { execution: ExecutionState }) {
               </Tabs>
             </>
           ) : execution.status === 'error' ? (
-            <Alert className="response-error" variant="destructive">
+            <Alert className="response-error" variant="error">
               <CircleAlert aria-hidden="true" />
               <AlertTitle>샘플 통신 오류</AlertTitle>
               <AlertDescription>{execution.message}</AlertDescription>

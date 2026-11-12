@@ -57,13 +57,10 @@
 .response-tabs > [role="tabpanel"] { min-height: 0; overflow: auto; }
 .response-error { overflow: auto; }
 .response-code { padding: 12px 0; }
-.workspace-statusbar { display: flex; gap: 16px; align-items: center; padding: 12px 16px; flex-wrap: wrap; }
-.workspace-notice { min-width: 0; flex: 1; }
-.open-tab-count { margin-left: auto; }
 .workspace-empty { overflow-y: auto; }
 
-/* 프리셋에 대응 variant가 없는 메서드·성공 상태의 기존 의미별 색상입니다. */
-.method-get, .method-head, .status-success { color: #147d58; }
+/* 프리셋에 대응 variant가 없는 메서드의 기존 의미별 색상입니다. */
+.method-get, .method-head { color: #147d58; }
 .method-post { color: #9b6710; }
 .method-put, .method-patch { color: #396ca3; }
 .method-options { color: #7957a2; }
@@ -98,5 +95,4 @@
   .request-run-controls { width: 100%; }
   .request-send { flex: 1; }
   .response-heading { align-items: flex-start; flex-direction: column; }
-  .workspace-notice { flex-basis: 100%; order: 3; }
 }

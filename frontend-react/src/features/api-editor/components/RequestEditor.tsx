@@ -238,7 +238,7 @@ export function RequestEditor({ request, onChange }: RequestEditorProps) {
                 <JsonEditor initialValue={request.body} label="요청 JSON 본문" onChange={(body) => onChange({ ...request, body })} />
               </Suspense>
               {jsonError && (
-                <Alert className="body-warning" variant="destructive" role="status">
+                <Alert className="body-warning" variant="error" role="status">
                   <AlertDescription>올바른 JSON 형식이 아닙니다.</AlertDescription>
                 </Alert>
               )}
