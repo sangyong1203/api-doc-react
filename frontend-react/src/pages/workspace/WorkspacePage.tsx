@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { CollectionSidebar } from '@/features/collections/components/CollectionSidebar'
 import { RequestEditor } from '@/features/api-editor/components/RequestEditor'
+import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
 import { ResponseViewer } from '@/features/request-runner/components/ResponseViewer'
 import { WorkspaceTabs } from '@/features/workspace/components/WorkspaceTabs'
 import { createSampleResponse, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
@@ -116,7 +117,7 @@ export function WorkspacePage() {
           <Separator />
           {activeTab ? (
             <TabsContent className="workspace-content" key={activeTab.request.id} value={activeTab.request.id}>
-              <RequestEditor
+              <RequestToolbar
                 request={activeTab.request}
                 dirty={JSON.stringify(activeTab.request) !== JSON.stringify(activeTab.saved)}
                 running={activeTab.execution.status === 'running'}
@@ -130,7 +131,13 @@ export function WorkspacePage() {
                 onRun={runSample}
                 onCancel={cancelSample}
               />
-              <ResponseViewer execution={activeTab.execution} />
+              <div className="request-response-layout">
+                <RequestEditor
+                  request={activeTab.request}
+                  onChange={(request) => updateTab(request.id, (tab) => ({ ...tab, request }))}
+                />
+                <ResponseViewer execution={activeTab.execution} />
+              </div>
             </TabsContent>
           ) : (
             <Empty className="workspace-empty">

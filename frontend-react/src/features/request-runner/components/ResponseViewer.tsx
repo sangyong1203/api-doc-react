@@ -13,7 +13,7 @@ export function ResponseViewer({ execution }: { execution: ExecutionState }) {
   return (
     <section className="response-viewer" aria-label="응답 결과" aria-busy={execution.status === 'running'}>
       <Card className="response-board" size="sm">
-        <CardContent>
+        <CardContent className="response-board-content">
           <div className="response-heading">
             <h2 className="response-title">응답 <Badge variant="secondary">SAMPLE</Badge></h2>
             {execution.status === 'complete' && (

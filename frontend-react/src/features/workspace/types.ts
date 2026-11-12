@@ -13,7 +13,8 @@ export type SampleRequest = {
   folder: string
   method: HttpMethod
   url: string
-  params: RequestField[]
+  pathParams: RequestField[]
+  queryParams: RequestField[]
   headers: RequestField[]
   body: string
 }

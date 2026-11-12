@@ -1,30 +1,21 @@
 import { lazy, Suspense, useState } from 'react'
-import { Play, Plus, Save, Square, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { HttpMethodBadge } from '@/components/HttpMethodBadge'
-import type { HttpMethod, RequestField, SampleOutcome, SampleRequest } from '@/features/workspace/types'
+import type { RequestField, SampleRequest } from '@/features/workspace/types'
 
 const JsonEditor = lazy(() => import('./JsonEditor').then((module) => ({ default: module.JsonEditor })))
-const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
 
 type RequestEditorProps = {
   request: SampleRequest
-  dirty: boolean
-  running: boolean
   onChange: (request: SampleRequest) => void
-  onSave: () => void
-  onRun: (outcome: SampleOutcome) => void
-  onCancel: () => void
 }
 
 type RequestFieldsProps = {
@@ -38,17 +29,10 @@ function RequestFields({ fields, label, onChange }: RequestFieldsProps) {
     onChange(fields.map((field) => field.id === fieldId ? { ...field, ...patch } : field))
   }
 
-  function addField() {
-    onChange([...fields, { id: crypto.randomUUID(), enabled: true, name: '', value: '' }])
-  }
-
   return (
     <div className="request-fields">
       <div className="fields-heading">
         <span>{label}</span>
-        <Button variant="ghost" size="sm" onClick={addField}>
-          <Plus aria-hidden="true" />행 추가
-        </Button>
       </div>
       <Table className="fields-table">
         <TableHeader>
@@ -110,9 +94,19 @@ function RequestFields({ fields, label, onChange }: RequestFieldsProps) {
   )
 }
 
-export function RequestEditor({ request, dirty, running, onChange, onSave, onRun, onCancel }: RequestEditorProps) {
-  const [section, setSection] = useState('params')
-  const [outcome, setOutcome] = useState<SampleOutcome>('success')
+export function RequestEditor({ request, onChange }: RequestEditorProps) {
+  const [section, setSection] = useState('query')
+
+  function addField() {
+    if (section === 'body') {
+      return
+    }
+    const fieldKey = section === 'path' ? 'pathParams' : section === 'query' ? 'queryParams' : 'headers'
+    onChange({
+      ...request,
+      [fieldKey]: [...request[fieldKey], { id: crypto.randomUUID(), enabled: true, name: '', value: '' }],
+    })
+  }
   let jsonError = false
   if (request.body.trim()) {
     try {
@@ -124,82 +118,36 @@ export function RequestEditor({ request, dirty, running, onChange, onSave, onRun
 
   return (
     <section className="request-editor" aria-label="요청 편집기">
-      <div className="request-heading">
-        <div className="request-identity">
-          <Breadcrumb className="request-breadcrumb" aria-label="API 위치">
-            <BreadcrumbList>
-              <BreadcrumbItem>Robot API</BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>{request.folder}</BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <h1 className="request-title">
-                  <BreadcrumbPage className="text-base font-semibold">{request.name}</BreadcrumbPage>
-                </h1>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-        <div className="request-save-controls">
-          {dirty && <Badge variant="secondary">미저장</Badge>}
-          <Button className="request-save text-xs" variant="outline" size="sm" disabled={!dirty} onClick={onSave}>
-            <Save aria-hidden="true" />샘플 저장
-          </Button>
-        </div>
-      </div>
-      <div className="request-url-bar">
-        <Select value={request.method} onValueChange={(method) => onChange({ ...request, method: method as HttpMethod })}>
-          <SelectTrigger className="method-select" aria-label="HTTP 메서드">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {METHODS.map((method) => (
-              <SelectItem key={method} value={method}><HttpMethodBadge method={method} /></SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          className="url-input"
-          aria-label="요청 URL"
-          placeholder="{{baseUrl}}/robots"
-          value={request.url}
-          onChange={(event) => onChange({ ...request, url: event.target.value })}
-        />
-        <div className="request-run-controls">
-          <Select value={outcome} disabled={running} onValueChange={(value) => setOutcome(value as SampleOutcome)}>
-            <SelectTrigger className="text-xs" id="sample-outcome" aria-label="샘플 실행 결과"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="success">성공 응답</SelectItem>
-              <SelectItem value="http-error">HTTP 오류 · 422</SelectItem>
-              <SelectItem value="network-error">통신 오류</SelectItem>
-            </SelectContent>
-          </Select>
-          {running ? (
-            <Button className="request-send text-xs" variant="outline" onClick={onCancel}>
-              <Square aria-hidden="true" />취소
-            </Button>
-          ) : (
-            <Button className="request-send text-xs" onClick={() => onRun(outcome)} disabled={!request.url.trim()}>
-              <Play aria-hidden="true" />샘플 실행
-            </Button>
-          )}
-        </div>
-      </div>
       <Card className="request-sections-board" size="sm">
-        <CardContent>
+        <CardContent className="request-board-content">
           <Tabs className="request-sections" value={section} onValueChange={setSection}>
-            <TabsList aria-label="요청 입력 항목">
-              <TabsTrigger value="params">
-                Params<Badge variant="secondary">{request.params.filter((field) => field.enabled && field.name.trim()).length}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="body">Body</TabsTrigger>
-              <TabsTrigger value="headers">
-                Headers<Badge variant="secondary">{request.headers.filter((field) => field.enabled && field.name.trim()).length}</Badge>
-              </TabsTrigger>
-            </TabsList>
+            <div className="request-sections-toolbar">
+              <div className="request-tab-list-scroll">
+                <TabsList aria-label="요청 입력 항목">
+                  <TabsTrigger value="path">
+                    Path params<Badge variant="secondary">{request.pathParams.filter((field) => field.enabled && field.name.trim()).length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="query">
+                    Query params<Badge variant="secondary">{request.queryParams.filter((field) => field.enabled && field.name.trim()).length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="body">Body params</TabsTrigger>
+                  <TabsTrigger value="headers">
+                    Headers<Badge variant="secondary">{request.headers.filter((field) => field.enabled && field.name.trim()).length}</Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              {section !== 'body' && (
+                <Button className="request-add-field" variant="ghost" size="sm" onClick={addField}>
+                  <Plus aria-hidden="true" />행 추가
+                </Button>
+              )}
+            </div>
             <Separator className="request-section-divider" />
-            <TabsContent className="request-section-content" value="params">
-              <RequestFields fields={request.params} label="Query parameters" onChange={(params) => onChange({ ...request, params })} />
+            <TabsContent className="request-section-content" value="path">
+              <RequestFields fields={request.pathParams} label="Path params" onChange={(pathParams) => onChange({ ...request, pathParams })} />
+            </TabsContent>
+            <TabsContent className="request-section-content" value="query">
+              <RequestFields fields={request.queryParams} label="Query params" onChange={(queryParams) => onChange({ ...request, queryParams })} />
             </TabsContent>
             <TabsContent className="request-section-content" value="headers">
               <RequestFields fields={request.headers} label="Request headers" onChange={(headers) => onChange({ ...request, headers })} />
