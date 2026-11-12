@@ -107,7 +107,6 @@ export function WorkspacePage() {
         <Separator orientation="vertical" className="header-divider" />
         <div className="workspace-name"><FolderOpen aria-hidden="true" /><span>Robot workspace</span></div>
         <div className="environment-picker">
-          <label htmlFor="workspace-environment">환경</label>
           <Select value={environment} onValueChange={setEnvironment}>
             <SelectTrigger size="sm" id="workspace-environment" aria-label="환경"><SelectValue /></SelectTrigger>
             <SelectContent>
