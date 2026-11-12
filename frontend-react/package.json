@@ -1,0 +1,46 @@
+{
+  "name": "apidoc-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.15.0 <23 || >=24.0.0"
+  },
+  "packageManager": "npm@11.5.1",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "type-check": "tsc -b --pretty false",
+    "lint": "eslint . --max-warnings 0",
+    "build": "npm run type-check && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/lang-markdown": "6.5.2",
+    "@radix-ui/react-slot": "1.5.0",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "codemirror": "6.0.2",
+    "lucide-react": "1.72.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-router": "7.18.5",
+    "tailwind-merge": "3.7.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@tailwindcss/vite": "4.3.5",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "eslint": "10.14.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.14.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.2",
+    "vite": "8.3.8"
+  }
+}

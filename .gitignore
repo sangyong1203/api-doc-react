@@ -1,0 +1,9 @@
+/frontend-vue/
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.local
+npm-debug.log*
