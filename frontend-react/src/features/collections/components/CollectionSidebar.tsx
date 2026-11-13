@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Folder } from 'lucide-react'
+import { ChevronDown, ChevronRight, Folder, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,13 +33,16 @@ export function CollectionSidebar({ requests, selectedId, onSelect }: Collection
         <span>컬렉션</span>
         <Badge variant="secondary">{requests.length} APIs</Badge>
       </div>
-      <Input
-        className="collection-search"
-        aria-label="API 이름, 메서드, 주소 검색"
-        placeholder="API 검색…"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-      />
+      <div className="collection-search-field relative">
+        <Search className="collection-search-icon pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Input
+          className="collection-search pl-9"
+          aria-label="API 이름, 메서드, 주소 검색"
+          placeholder="API 검색…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
       <div className="collection-title text-xs">
         <Folder aria-hidden="true" />
         <span>Robot API</span>
