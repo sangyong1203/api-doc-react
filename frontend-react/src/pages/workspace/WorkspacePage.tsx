@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { Braces, FolderOpen } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { CollectionSidebar } from '@/features/collections/components/CollectionSidebar'
+import { CollectionEditDialog } from '@/features/collections/components/CollectionEditDialog'
+import type { CollectionDeleteTarget, CollectionDialogTarget, CollectionFormValues } from '@/features/collections/types'
 import { RequestEditor } from '@/features/api-editor/components/RequestEditor'
 import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
 import { ResponseViewer } from '@/features/request-runner/components/ResponseViewer'
 import { WorkspaceTabs } from '@/features/workspace/components/WorkspaceTabs'
-import { createSampleResponse, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
+import { createSampleResponse, SAMPLE_COLLECTIONS, SAMPLE_FOLDERS, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
 import type { RequestField, SampleRequest, WorkspaceTab } from '@/features/workspace/types'
 import '@/styles/workspace.css'
 
@@ -24,12 +28,24 @@ function copyActiveFields(fields: RequestField[]): Array<Pick<RequestField, 'nam
 }
 
 export function WorkspacePage() {
+  const [collections, setCollections] = useState(SAMPLE_COLLECTIONS)
+  const [folders, setFolders] = useState(SAMPLE_FOLDERS)
   const [requests, setRequests] = useState(SAMPLE_REQUESTS)
+  const [editTarget, setEditTarget] = useState<CollectionDialogTarget | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<CollectionDeleteTarget | null>(null)
   const [tabs, setTabs] = useState<WorkspaceTab[]>([createTab(SAMPLE_REQUESTS[0])])
   const [activeId, setActiveId] = useState<string | null>(SAMPLE_REQUESTS[0].id)
   const [environment, setEnvironment] = useState('local')
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const activeTab = tabs.find((tab) => tab.request.id === activeId)
+  const deleteRequests = deleteTarget ? requests.filter((request) => deleteTarget.kind === 'collection'
+    ? request.collectionId === deleteTarget.id : deleteTarget.kind === 'folder'
+      ? request.folderId === deleteTarget.id : request.id === deleteTarget.id) : []
+  const deleteRequestIds = new Set(deleteRequests.map((request) => request.id))
+  const deleteFolderCount = deleteTarget?.kind === 'collection' ? folders.filter((folder) => folder.collectionId === deleteTarget.id).length : 0
+  const affectedTabs = tabs.filter((tab) => deleteRequestIds.has(tab.request.id))
+  const dirtyDeleteCount = affectedTabs.filter((tab) => JSON.stringify(tab.request) !== JSON.stringify(tab.saved)).length
+  const runningDeleteCount = affectedTabs.filter((tab) => tab.execution.status === 'running').length
 
   useEffect(() => {
     const pendingTimers = timers.current
@@ -47,6 +63,72 @@ export function WorkspacePage() {
       setTabs((current) => [...current, createTab(request)])
     }
     setActiveId(request.id)
+  }
+
+  function beginEdit(target: CollectionDialogTarget) {
+    // API 기본 정보는 저장 전 열린 탭의 최신 값으로 편집합니다.
+    if (target.kind === 'api' && target.request) {
+      const draft = tabs.find((tab) => tab.request.id === target.request?.id)?.request
+      setEditTarget(draft ? { ...target, request: draft, collectionId: draft.collectionId, folderId: draft.folderId } : target)
+    } else {
+      setEditTarget(target)
+    }
+  }
+
+  function submitEntity(values: CollectionFormValues): string | null {
+    if (!editTarget) { return '편집할 항목을 선택하세요.' }
+    const { name, collectionId, folderId, method, url } = values
+    if (editTarget.kind === 'collection') {
+      const id = editTarget.collection?.id
+      if (collections.some((item) => item.id !== id && item.name.toLowerCase() === name.toLowerCase())) {
+        return '같은 이름의 컬렉션이 있습니다.'
+      }
+      setCollections((current) => id ? current.map((item) => item.id === id ? { ...item, name } : item) : [...current, { id: crypto.randomUUID(), name }])
+    } else if (editTarget.kind === 'folder') {
+      const id = editTarget.folder?.id
+      if (folders.some((item) => item.id !== id && item.collectionId === collectionId && item.name.toLowerCase() === name.toLowerCase())) {
+        return '이 컬렉션에 같은 이름의 폴더가 있습니다.'
+      }
+      setFolders((current) => id ? current.map((item) => item.id === id ? { ...item, name } : item) : [...current, { id: crypto.randomUUID(), collectionId, name }])
+    } else {
+      if (!collections.some((item) => item.id === collectionId)
+        || (folderId !== null && !folders.some((item) => item.id === folderId && item.collectionId === collectionId))) {
+        return '유효한 컬렉션과 폴더를 선택하세요.'
+      }
+      const id = editTarget.request?.id
+      if (requests.some((item) => item.id !== id && item.collectionId === collectionId && item.folderId === folderId && item.name.toLowerCase() === name.toLowerCase())) {
+        return '이 위치에 같은 이름의 API가 있습니다.'
+      }
+      const patch = { name, collectionId, folderId, method, url }
+      if (id) {
+        setRequests((current) => current.map((request) => request.id === id ? { ...request, ...patch } : request))
+        // 기본 정보만 적용해 params·body·오류 응답의 미저장 편집은 보존합니다.
+        updateTab(id, (tab) => ({ ...tab, request: { ...tab.request, ...patch }, saved: { ...tab.saved, ...patch } }))
+      } else {
+        const request: SampleRequest = { id: crypto.randomUUID(), ...patch, pathParams: [], queryParams: [], headers: [], body: '', errorResponses: [] }
+        setRequests((current) => [...current, request])
+        setTabs((current) => [...current, createTab(request)])
+        setActiveId(request.id)
+      }
+    }
+    return null
+  }
+
+  function deleteEntity() {
+    if (!deleteTarget) { return }
+    // 포함 API의 실행을 먼저 해제하여 삭제 이후 결과가 다시 생성되지 않게 합니다.
+    deleteRequestIds.forEach((id) => { clearTimeout(timers.current.get(id)); timers.current.delete(id) })
+    setRequests((current) => current.filter((request) => !deleteRequestIds.has(request.id)))
+    const remaining = tabs.filter((tab) => !deleteRequestIds.has(tab.request.id))
+    setTabs(remaining)
+    if (activeId && deleteRequestIds.has(activeId)) { setActiveId(remaining[0]?.request.id ?? null) }
+    if (deleteTarget.kind === 'collection') {
+      setCollections((current) => current.filter((item) => item.id !== deleteTarget.id))
+      setFolders((current) => current.filter((item) => item.collectionId !== deleteTarget.id))
+    } else if (deleteTarget.kind === 'folder') {
+      setFolders((current) => current.filter((item) => item.id !== deleteTarget.id))
+    }
+    setDeleteTarget(null)
   }
 
   function closeTab(id: string) {
@@ -118,7 +200,7 @@ export function WorkspacePage() {
       </header>
       <Separator />
       <div className="workspace-body">
-        <CollectionSidebar requests={requests} selectedId={activeId ?? undefined} onSelect={openRequest} />
+        <CollectionSidebar collections={collections} folders={folders} requests={requests} selectedId={activeId ?? undefined} onSelect={openRequest} onEdit={beginEdit} onDelete={setDeleteTarget} />
         <Separator orientation="vertical" className="workspace-sidebar-divider" />
         <Tabs className="workspace-main" value={activeId ?? ''} onValueChange={setActiveId}>
           <div className="workspace-tab-bar">
@@ -129,6 +211,8 @@ export function WorkspacePage() {
             <TabsContent className="workspace-content" key={activeTab.request.id} value={activeTab.request.id}>
               <RequestToolbar
                 request={activeTab.request}
+                collectionName={collections.find((item) => item.id === activeTab.request.collectionId)?.name ?? ''}
+                folderName={folders.find((item) => item.id === activeTab.request.folderId)?.name}
                 dirty={JSON.stringify(activeTab.request) !== JSON.stringify(activeTab.saved)}
                 running={activeTab.execution.status === 'running'}
                 onChange={(request) => updateTab(request.id, (tab) => ({ ...tab, request }))}
@@ -159,6 +243,25 @@ export function WorkspacePage() {
           )}
         </Tabs>
       </div>
+      {editTarget && <CollectionEditDialog target={editTarget} collections={collections} folders={folders} onClose={() => setEditTarget(null)} onSubmit={submitEntity} />}
+      <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) { setDeleteTarget(null) } }}>
+        <DialogContent className="collection-delete-dialog">
+          <DialogTitle>{deleteTarget?.name} 삭제</DialogTitle>
+          <DialogDescription>
+            {deleteTarget?.kind === 'api' ? '이 API를 삭제하시겠습니까?' : '이 항목과 포함된 폴더·API를 함께 삭제하시겠습니까?'} 현재 메모리의 변경은 되돌릴 수 없습니다.
+          </DialogDescription>
+          <div className="delete-impact grid gap-2 text-sm">
+            {deleteTarget?.kind === 'collection' && <p>포함된 폴더 {deleteFolderCount}개</p>}
+            <p>삭제할 API {deleteRequests.length}개 · 닫힐 작업 탭 {affectedTabs.length}개</p>
+            {dirtyDeleteCount > 0 && <p className="delete-unsaved-warning text-warning">미저장 작업 {dirtyDeleteCount}개의 변경 사항이 사라집니다.</p>}
+            {runningDeleteCount > 0 && <p className="delete-running-warning text-warning">실행 중인 요청 {runningDeleteCount}개를 중단합니다.</p>}
+          </div>
+          <div className="collection-dialog-actions flex justify-end gap-2">
+            <Button variant="outline" autoFocus onClick={() => setDeleteTarget(null)}>취소</Button>
+            <Button variant="destructive" onClick={deleteEntity}>삭제</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

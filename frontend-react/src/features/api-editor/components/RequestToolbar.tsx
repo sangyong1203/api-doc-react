@@ -11,6 +11,8 @@ const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 
 
 type RequestToolbarProps = {
   request: SampleRequest
+  collectionName: string
+  folderName?: string
   dirty: boolean
   running: boolean
   onChange: (request: SampleRequest) => void
@@ -19,16 +21,15 @@ type RequestToolbarProps = {
   onCancel: () => void
 }
 
-export function RequestToolbar({ request, dirty, running, onChange, onSave, onRun, onCancel }: RequestToolbarProps) {
+export function RequestToolbar({ request, collectionName, folderName, dirty, running, onChange, onSave, onRun, onCancel }: RequestToolbarProps) {
   return (
     <section className="request-toolbar" aria-label="요청 정보 및 실행">
       <div className="request-heading">
         <div className="request-identity">
           <Breadcrumb className="request-breadcrumb" aria-label="API 위치">
             <BreadcrumbList>
-              <BreadcrumbItem>Robot API</BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>{request.folder}</BreadcrumbItem>
+              <BreadcrumbItem>{collectionName}</BreadcrumbItem>
+              {folderName && <><BreadcrumbSeparator /><BreadcrumbItem>{folderName}</BreadcrumbItem></>}
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <h1 className="request-title">

@@ -1,8 +1,14 @@
-import type { HttpMethod, SampleRequest, SampleResponse } from '../types'
+import type { HttpMethod, SampleRequest, SampleResponse, WorkspaceCollection, WorkspaceFolder } from '../types'
+
+export const SAMPLE_COLLECTIONS: WorkspaceCollection[] = [{ id: 'robot-api', name: 'Robot API' }]
+export const SAMPLE_FOLDERS: WorkspaceFolder[] = [
+  { id: 'robots', collectionId: 'robot-api', name: '로봇 관리' },
+  { id: 'system', collectionId: 'robot-api', name: '시스템' },
+]
 
 export const SAMPLE_REQUESTS: SampleRequest[] = [
   {
-    id: 'robots-list', name: '로봇 목록 조회', folder: '로봇 관리', method: 'GET',
+    id: 'robots-list', name: '로봇 목록 조회', collectionId: 'robot-api', folderId: 'robots', method: 'GET',
     url: '{{baseUrl}}/robots',
     errorResponses: [],
     pathParams: [],
@@ -10,21 +16,21 @@ export const SAMPLE_REQUESTS: SampleRequest[] = [
     headers: [{ id: 'accept', enabled: true, name: 'Accept', value: 'application/json' }], body: '',
   },
   {
-    id: 'robots-create', name: '로봇 등록', folder: '로봇 관리', method: 'POST',
+    id: 'robots-create', name: '로봇 등록', collectionId: 'robot-api', folderId: 'robots', method: 'POST',
     url: '{{baseUrl}}/robots', pathParams: [], queryParams: [],
     errorResponses: [],
     headers: [{ id: 'content-type', enabled: true, name: 'Content-Type', value: 'application/json' }],
     body: JSON.stringify({ robotId: 'robot-003', name: '배송 로봇 C', zone: 'C-01' }, null, 2),
   },
   {
-    id: 'robots-detail', name: '로봇 상세 조회', folder: '로봇 관리', method: 'GET',
+    id: 'robots-detail', name: '로봇 상세 조회', collectionId: 'robot-api', folderId: 'robots', method: 'GET',
     url: '{{baseUrl}}/robots/robot-001',
     errorResponses: [],
     pathParams: [{ id: 'robot-id', enabled: true, name: 'robotId', value: 'robot-001' }],
     queryParams: [], headers: [], body: '',
   },
   {
-    id: 'health', name: '서비스 상태 확인', folder: '시스템', method: 'GET',
+    id: 'health', name: '서비스 상태 확인', collectionId: 'robot-api', folderId: 'system', method: 'GET',
     url: '{{baseUrl}}/health', pathParams: [], queryParams: [], headers: [], body: '',
     errorResponses: [],
   },

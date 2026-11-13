@@ -1,5 +1,8 @@
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 
+export type WorkspaceCollection = { id: string; name: string }
+export type WorkspaceFolder = { id: string; collectionId: string; name: string }
+
 export type RequestField = {
   id: string
   enabled: boolean
@@ -18,7 +21,8 @@ export type ErrorResponseExample = {
 export type SampleRequest = {
   id: string
   name: string
-  folder: string
+  collectionId: string
+  folderId: string | null
   method: HttpMethod
   url: string
   pathParams: RequestField[]
