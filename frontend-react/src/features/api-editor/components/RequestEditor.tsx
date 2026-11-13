@@ -1,16 +1,17 @@
-import { type ReactNode, lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { BodyEditor } from './BodyEditor'
+import { DEFAULT_SPEC, fieldValueError } from '../requestSchema'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { ErrorResponseExample, RequestField, SampleRequest } from '@/features/workspace/types'
+import type { ErrorResponseExample, FieldSpec, RequestField, SampleRequest } from '@/features/workspace/types'
 
-const JsonEditor = lazy(() => import('./JsonEditor').then((module) => ({ default: module.JsonEditor })))
 
 type RequestEditorProps = {
   payloadPicker: ReactNode
@@ -20,12 +21,15 @@ type RequestEditorProps = {
 
 type RequestFieldsProps = {
   fields: RequestField[]
+  specs?: Record<string, FieldSpec>
+  path?: boolean
+  onSpecChange?: (id: string, spec: FieldSpec) => void
   label: string
   onAdd?: () => void
   onChange: (fields: RequestField[]) => void
 }
 
-function RequestFields({ fields, label, onAdd, onChange }: RequestFieldsProps) {
+function RequestFields({ fields, specs = {}, path = false, onSpecChange, label, onAdd, onChange }: RequestFieldsProps) {
   function updateField(fieldId: string, patch: Partial<RequestField>) {
     onChange(fields.map((field) => field.id === fieldId ? { ...field, ...patch } : field))
   }
@@ -40,21 +44,27 @@ function RequestFields({ fields, label, onAdd, onChange }: RequestFieldsProps) {
         </div>
       )}
       <div className="fields-table-frame overflow-hidden">
-        <Table className="fields-table" aria-label={label}>
+        <Table className={onSpecChange ? "fields-table min-w-[900px] [&_input]:bg-transparent!" : "fields-table [&_input]:bg-transparent!"} aria-label={label}>
           <TableHeader className="fields-table-header bg-muted/50">
             <TableRow>
               <TableHead className="field-action-cell"><span className="sr-only">사용</span></TableHead>
               <TableHead>키</TableHead>
+              {onSpecChange && <><TableHead className="w-12 text-center">필수</TableHead><TableHead className="w-44">타입</TableHead></>}
               <TableHead>값</TableHead>
+              {onSpecChange && <TableHead>설명</TableHead>}
               <TableHead className="field-action-cell"><span className="sr-only">삭제</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {fields.map((field, index) => (
+            {fields.map((field, index) => {
+              const spec = { ...(specs[field.id] ?? DEFAULT_SPEC), ...(path ? { required: true } : {}) }
+              const error = field.enabled ? fieldValueError(field.value, spec) : null
+              return (
               <TableRow key={field.id}>
                 <TableCell>
                   <Checkbox
-                    checked={field.enabled}
+                    checked={path || field.enabled}
+                    disabled={path}
                     aria-label={`${label} ${index + 1}행 사용`}
                     onCheckedChange={(checked) => updateField(field.id, { enabled: checked === true })}
                   />
@@ -68,15 +78,22 @@ function RequestFields({ fields, label, onAdd, onChange }: RequestFieldsProps) {
                     onChange={(event) => updateField(field.id, { name: event.target.value })}
                   />
                 </TableCell>
+                {onSpecChange && <>
+                  <TableCell className="required-cell px-0! text-center"><div className="required-checkbox flex w-full items-center justify-center"><Checkbox aria-label={`${label} ${index + 1}행 필수`} checked={spec.required} disabled={path} onCheckedChange={(checked) => onSpecChange(field.id, { ...spec, required: checked === true })} /></div></TableCell>
+                  <TableCell><Select value={spec.type} onValueChange={(type) => onSpecChange(field.id, { ...spec, type: type as FieldSpec['type'] })}><SelectTrigger className="field-type-select w-40 min-w-40 max-w-40 bg-transparent! hover:bg-transparent!" aria-label={`${label} ${index + 1}행 타입`}><SelectValue /></SelectTrigger><SelectContent>{(['string', 'number', 'boolean'] as const).map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></TableCell>
+                </>}
                 <TableCell>
                   <Input
                     className="field-input"
+                    aria-invalid={Boolean(error)}
                     aria-label={`${label} ${index + 1}행 값`}
                     placeholder="Value"
                     value={field.value}
                     onChange={(event) => updateField(field.id, { value: event.target.value })}
                   />
+                  {error && <span className="field-value-error block whitespace-normal text-xs text-error" role="status">{error}</span>}
                 </TableCell>
+                {onSpecChange && <TableCell><Input aria-label={`${label} ${index + 1}행 설명`} value={spec.description} onChange={(event) => onSpecChange(field.id, { ...spec, description: event.target.value })} /></TableCell>}
                 <TableCell>
                   <Button
                     variant="ghost"
@@ -88,10 +105,10 @@ function RequestFields({ fields, label, onAdd, onChange }: RequestFieldsProps) {
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
             {fields.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4}>등록된 항목이 없습니다. 행을 추가해 입력하세요.</TableCell>
+                <TableCell colSpan={onSpecChange ? 7 : 4}>등록된 항목이 없습니다. 행을 추가해 입력하세요.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -201,7 +218,7 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
   }
 
   function addField() {
-    if (section === 'body' || section === 'errors') {
+    if (section === 'body' || section === 'errors' || section === 'response') {
       return
     }
     const fieldKey = section === 'path' ? 'pathParams' : section === 'query' ? 'queryParams' : 'headers'
@@ -219,17 +236,13 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
   const sections = [
     { value: 'path', label: 'Path params', hasData: request.pathParams.some((field) => field.enabled && field.name.trim()) },
     { value: 'query', label: 'Query params', hasData: request.queryParams.some((field) => field.enabled && field.name.trim()) },
-    { value: 'body', label: 'Body params', hasData: Boolean(request.body.trim()) },
+    { value: 'body', label: 'Body params', hasData: request.bodyFormat === 'multipart' ? Boolean(request.multipartFields?.some((field) => field.enabled && field.name.trim())) : Boolean(request.body.trim()) || Boolean(request.schema?.body.length) },
     { value: 'headers', label: 'Headers', hasData: request.headers.some((field) => field.enabled && field.name.trim()) },
+    { value: 'response', label: '응답 명세', hasData: Boolean(request.responseFields?.length) },
     { value: 'errors', label: '오류 응답', hasData: request.errorResponses.length > 0 },
   ]
-  let jsonError = false
-  if (request.body.trim()) {
-    try {
-      JSON.parse(request.body)
-    } catch {
-      jsonError = true
-    }
+  function changeSpec(id: string, spec: FieldSpec) {
+    onChange({ ...request, schema: { body: request.schema?.body ?? [], fields: { ...request.schema?.fields, [id]: spec } } })
   }
 
   return (
@@ -282,7 +295,7 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
                 )}
               </div>
               {payloadPicker}
-              {section !== 'body' && (
+              {section !== 'body' && section !== 'response' && (
                 <Button className="request-add-field" variant="ghost" size="sm" onClick={section === 'errors' ? addErrorResponse : addField}>
                   <Plus aria-hidden="true" />{section === 'errors' ? '오류 응답 추가' : '행 추가'}
                 </Button>
@@ -290,13 +303,13 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
             </div>
             <Separator className="request-section-divider" />
             <TabsContent className="request-section-content" value="path">
-              <RequestFields fields={request.pathParams} label="Path params" onChange={(pathParams) => onChange({ ...request, pathParams })} />
+              <RequestFields fields={request.pathParams} specs={request.schema?.fields} path onSpecChange={changeSpec} label="Path params" onChange={(pathParams) => onChange({ ...request, pathParams })} />
             </TabsContent>
             <TabsContent className="request-section-content" value="query">
-              <RequestFields fields={request.queryParams} label="Query params" onChange={(queryParams) => onChange({ ...request, queryParams })} />
+              <RequestFields fields={request.queryParams} specs={request.schema?.fields} onSpecChange={changeSpec} label="Query params" onChange={(queryParams) => onChange({ ...request, queryParams })} />
             </TabsContent>
             <TabsContent className="request-section-content" value="headers">
-              <RequestFields fields={request.headers} label="Request headers" onChange={(headers) => onChange({ ...request, headers })} />
+              <RequestFields fields={request.headers} specs={request.schema?.fields} onSpecChange={changeSpec} label="Request headers" onChange={(headers) => onChange({ ...request, headers })} />
             </TabsContent>
             <TabsContent className="request-section-content error-responses-content" value="errors">
               <div className="error-response-list flex flex-col gap-3 p-1">
@@ -310,19 +323,12 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
                 ))}
               </div>
             </TabsContent>
+            <TabsContent className="request-section-content request-body-content" value="response">
+              <BodyEditor schemaOnly request={{ ...request, schema: { fields: {}, body: request.responseFields ?? [{ id: 'response-root', parentId: null, name: '$', type: 'object', required: false, description: '' }] } }}
+                onChange={(next) => onChange({ ...request, responseFields: next.schema?.body })} />
+            </TabsContent>
             <TabsContent className="request-section-content request-body-content" value="body">
-              <div className="body-heading">
-                <Badge variant="outline">JSON</Badge>
-                {jsonError && <span className="body-warning text-sm text-error" role="status">올바른 JSON 형식이 아닙니다.</span>}
-              </div>
-              <div className="request-body-scroll">
-                <Suspense fallback={<p className="editor-loading" role="status">편집기 준비 중…</p>}>
-                  <JsonEditor initialValue={request.body} label="요청 JSON 본문" onChange={(body) => onChange({ ...request, body })} />
-                </Suspense>
-                {(request.method === 'GET' || request.method === 'HEAD') && (
-                  <p className="body-hint">GET·HEAD 본문의 실제 전송 정책은 API 호출 구현 단계에서 확정합니다.</p>
-                )}
-              </div>
+              <BodyEditor request={request} onChange={onChange} />
             </TabsContent>
           </Tabs>
         </CardContent>

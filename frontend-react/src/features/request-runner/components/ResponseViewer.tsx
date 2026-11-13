@@ -67,7 +67,7 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
                     <pre className="response-code"><code>{formatFields(requestSnapshot.queryParams)}</code></pre>
                   </section>
                   <section className="exchange-data-section" aria-label="실행 당시 Request Body">
-                    <h3 className="exchange-data-title">Request Body</h3>
+                    <h3 className="exchange-data-title">Request Body{requestSnapshot.bodyFormat === 'multipart' ? ' · Multipart Form' : ''}</h3>
                     <pre className="response-code"><code>{requestSnapshot.body || '(본문 없음)'}</code></pre>
                   </section>
                   <p className="request-snapshot-notice">실행 시작 시점의 입력값입니다. 실제 전송 내역은 아닙니다.</p>

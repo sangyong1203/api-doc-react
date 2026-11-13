@@ -9,10 +9,11 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { CollectionSidebar } from '@/features/collections/components/CollectionSidebar'
 import { CollectionEditDialog } from '@/features/collections/components/CollectionEditDialog'
 import type { CollectionDeleteTarget, CollectionDialogTarget, CollectionFormValues } from '@/features/collections/types'
+import { getRequestBody, validateRequest } from '@/features/api-editor/requestSchema'
 import { RequestEditor } from '@/features/api-editor/components/RequestEditor'
 import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
 import { PayloadPicker } from '@/features/payload-presets/components/PayloadPicker'
-import { copyPayload, type PayloadPreset } from '@/features/payload-presets/types'
+import { applyPayload, copyPayload, type PayloadPreset } from '@/features/payload-presets/types'
 import { ResponseViewer } from '@/features/request-runner/components/ResponseViewer'
 import { WorkspaceTabs } from '@/features/workspace/components/WorkspaceTabs'
 import { EnvironmentPicker } from '@/features/environments/components/EnvironmentPicker'
@@ -25,7 +26,7 @@ function createInitialPreset(request: SampleRequest): PayloadPreset {
 }
 
 function createTab(request: SampleRequest, preset = createInitialPreset(request)): WorkspaceTab {
-  const values = { ...request, ...copyPayload(preset.values) }
+  const values = applyPayload(request, preset.values)
   return { request: values, saved: values, selectedPresetId: preset.id, execution: { status: 'idle' }, requestSnapshot: null }
 }
 
@@ -41,6 +42,7 @@ export function WorkspacePage() {
   const [requests, setRequests] = useState(SAMPLE_REQUESTS)
   const [presetsByApi, setPresetsByApi] = useState<Record<string, PayloadPreset[]>>(() => Object.fromEntries(SAMPLE_REQUESTS.map((request) => [request.id, [createInitialPreset(request)]])))
   const [defaultPresets, setDefaultPresets] = useState<Record<string, string | null>>({})
+  const [requestError, setRequestError] = useState<{ id: string; message: string } | null>(null)
   const [confirmation, setConfirmation] = useState<{
     title: string
     description: string
@@ -185,7 +187,7 @@ export function WorkspacePage() {
     }
     const values = copyPayload(preset?.values ?? base)
     updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: id,
-      request: { ...tab.request, ...values }, saved: { ...tab.saved, ...copyPayload(values) } }))
+      request: applyPayload(tab.request, values), saved: applyPayload(tab.saved, values) }))
   }
 
   function addPreset() {
@@ -196,7 +198,7 @@ export function WorkspacePage() {
     const preset = { id: crypto.randomUUID(), name: `입력 세트 ${suffix}`, description: '', values: copyPayload(activeTab.request) }
     setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: [...presets, preset] }))
     updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: preset.id,
-      saved: { ...tab.saved, ...copyPayload(preset.values) } }))
+      saved: applyPayload(tab.saved, preset.values) }))
   }
 
   function deletePreset(id: string, confirmed = false) {
@@ -216,7 +218,7 @@ export function WorkspacePage() {
     }
     if (activeTab.selectedPresetId === id) {
       updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: fallback.id,
-        request: { ...tab.request, ...copyPayload(fallback.values) }, saved: { ...tab.saved, ...copyPayload(fallback.values) } }))
+        request: applyPayload(tab.request, fallback.values), saved: applyPayload(tab.saved, fallback.values) }))
     }
     setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: presets.filter((item) => item.id !== id) }))
     if (defaultPresets[activeTab.request.id] === id) { setDefaultPresets((current) => ({ ...current, [activeTab.request.id]: fallback.id })) }
@@ -228,9 +230,13 @@ export function WorkspacePage() {
       return
     }
     const { request } = activeTab
+    const error = validateRequest(request)
+    if (error) { setRequestError({ id: request.id, message: error }); return }
+    setRequestError(null)
     // 실행 이후 편집과 독립적으로 당시 본문·파라미터·헤더를 유지합니다.
     const requestSnapshot = {
-      body: request.body,
+      bodyFormat: request.bodyFormat ?? 'json',
+      body: getRequestBody(request),
       pathParams: copyActiveFields(request.pathParams),
       queryParams: copyActiveFields(request.queryParams),
       headers: copyActiveFields(request.headers),
@@ -279,8 +285,11 @@ export function WorkspacePage() {
                 folderName={folders.find((item) => item.id === activeTab.request.folderId)?.name}
                 dirty={JSON.stringify(activeTab.request) !== JSON.stringify(activeTab.saved)}
                 running={activeTab.execution.status === 'running'}
-                onChange={(request) => updateTab(request.id, (tab) => ({ ...tab, request }))}
+                onChange={(request) => { setRequestError(null); updateTab(request.id, (tab) => ({ ...tab, request })) }}
                 onSave={() => {
+                  const error = validateRequest(activeTab.request)
+                  if (error) { setRequestError({ id: activeTab.request.id, message: error }); return }
+                  setRequestError(null)
                   updateTab(activeTab.request.id, (tab) => ({ ...tab, saved: tab.request }))
                   if (activeTab.selectedPresetId) {
                     const selectedId = activeTab.selectedPresetId
@@ -288,11 +297,12 @@ export function WorkspacePage() {
                       preset.id === selectedId ? { ...preset, values: copyPayload(activeTab.request) } : preset) }))
                   }
                   setRequests((current) => current.map((request) => request.id === activeTab.request.id
-                    ? { ...activeTab.request, ...(activeTab.selectedPresetId ? copyPayload(request) : {}) } : request))
+                    ? (activeTab.selectedPresetId ? applyPayload(activeTab.request, copyPayload(request)) : activeTab.request) : request))
                 }}
                 onRun={runSample}
                 onCancel={cancelSample}
               />
+              {requestError?.id === activeTab.request.id && <p className="request-validation-error px-6 pb-2 text-sm text-error" role="alert">{requestError.message}</p>}
               <div className="request-response-layout">
                 <RequestEditor
                   payloadPicker={<PayloadPicker presets={presetsByApi[activeTab.request.id] ?? []} selectedId={activeTab.selectedPresetId}
@@ -300,7 +310,7 @@ export function WorkspacePage() {
                     onDefault={(id) => setDefaultPresets((current) => ({ ...current, [activeTab.request.id]: id }))}
                     onRename={(id, name) => setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: (current[activeTab.request.id] ?? []).map((preset) => preset.id === id ? { ...preset, name } : preset) }))} />}
                   request={activeTab.request}
-                  onChange={(request) => updateTab(request.id, (tab) => ({ ...tab, request }))}
+                  onChange={(request) => { setRequestError(null); updateTab(request.id, (tab) => ({ ...tab, request })) }}
                 />
                 <ResponseViewer execution={activeTab.execution} requestSnapshot={activeTab.requestSnapshot} />
               </div>
