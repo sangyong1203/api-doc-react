@@ -26,7 +26,7 @@
 .tabs-empty { padding: 8px; }
 .workspace-content { display: flex; flex-direction: column; min-height: 0; width: 100%; overflow: hidden; }
 .request-toolbar { flex-shrink: 0; padding: 16px 24px 12px; }
-.request-response-layout { display: grid; grid-template-columns: minmax(650px, 7fr) minmax(270px, 3fr); flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; gap: 12px; padding: 0 24px 16px; }
+.request-response-layout { display: grid; grid-template-columns: minmax(650px, 3fr) minmax(270px, 1fr); flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; gap: 12px; padding: 0 24px 16px; }
 .request-editor { display: flex; flex-direction: column; min-width: 650px; min-height: 0; }
 .request-sections-board, .response-board { flex: 1; min-height: 0; }
 .request-board-content, .response-board-content { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
