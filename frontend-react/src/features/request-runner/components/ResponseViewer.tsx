@@ -17,6 +17,16 @@ function formatFields(fields: RequestSnapshot['headers']): string {
 }
 
 export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerProps) {
+  const responseMetrics = execution.status === 'complete' ? (
+    <div className="response-metrics">
+      <Badge variant={execution.response.status >= 400 ? 'error' : 'success'}>
+        {execution.response.status} {execution.response.statusText}
+      </Badge>
+      <Badge variant="outline">{execution.response.durationMs} ms</Badge>
+      <Badge variant="outline">{execution.response.sizeBytes} B</Badge>
+    </div>
+  ) : null
+
   return (
     <section className="response-viewer" aria-label="요청 및 응답 결과">
       <Card className="response-board" size="sm">
@@ -28,18 +38,10 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
                 <TabsTrigger value="payload">Payload</TabsTrigger>
                 <TabsTrigger value="response">Response</TabsTrigger>
               </TabsList>
-              {execution.status === 'complete' && (
-                <div className="response-metrics">
-                  <Badge variant={execution.response.status >= 400 ? 'error' : 'success'}>
-                    {execution.response.status} {execution.response.statusText}
-                  </Badge>
-                  <Badge variant="outline">{execution.response.durationMs} ms</Badge>
-                  <Badge variant="outline">{execution.response.sizeBytes} B</Badge>
-                </div>
-              )}
             </div>
             <Separator className="response-section-divider" />
             <TabsContent className="response-view-content" value="headers">
+              {responseMetrics}
               <div className="exchange-data-sections">
                 <section className="exchange-data-section" aria-label="Request Headers">
                   <h3 className="exchange-data-title">Request Headers</h3>
@@ -53,6 +55,7 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
               </div>
             </TabsContent>
             <TabsContent className="response-view-content" value="payload">
+              {responseMetrics}
               {requestSnapshot ? (
                 <div className="exchange-data-sections">
                   <section className="exchange-data-section" aria-label="실행 당시 Path params">
@@ -79,6 +82,7 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
               )}
             </TabsContent>
             <TabsContent className="response-view-content" value="response" aria-busy={execution.status === 'running'}>
+              {responseMetrics}
               {execution.status === 'complete' ? (
                 <pre className="response-code"><code>{execution.response.body || '(본문 없음)'}</code></pre>
               ) : execution.status === 'error' ? (
