@@ -1,7 +1,7 @@
 import test from 'node:test'
 import { File } from 'node:buffer'
 import assert from 'node:assert/strict'
-import { addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, createMultipartForm, describeMultipart, validateRequest, validateMultipart, fieldValueError, importBody, parseFieldValue, serializeBody, validateStructure } from './requestSchema.ts'
+import { addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, createMultipartForm, describeMultipart, withDefaultBodyView, validateRequest, validateMultipart, fieldValueError, importBody, parseFieldValue, serializeBody, validateStructure } from './requestSchema.ts'
 import { applyPayload, copyPayload } from '../payload-presets/types.ts'
 
 test('JSON 구조와 0·false·null·배열 루트가 왕복 변환된다', () => {
@@ -157,4 +157,17 @@ test('파일 선택은 세트별로 복원하고 파일 내용은 메타데이�
   assert.equal(restored.multipartFiles.upload.selectionId, 'first')
   delete restored.multipartFiles.upload
   assert.equal(first.multipartFiles.upload.file, firstFile)
+})
+
+
+test('본문 기본 보기는 필드 편집이며 잘못된 JSON과 명시적 원문 선택은 보존한다', () => {
+  const initial = withDefaultBodyView({ body: '{"name":"로봇"}' })
+  assert.equal(initial.bodyView, 'fields')
+  assert.deepEqual(JSON.parse(serializeBody(initial.schema.body, initial.bodyValues)), { name: '로봇' })
+  assert.equal(withDefaultBodyView({ body: '' }).bodyView, 'fields')
+  const broken = withDefaultBodyView({ body: '{broken' })
+  assert.equal(broken.bodyView, 'json')
+  assert.equal(broken.body, '{broken')
+  const raw = { body: '{}', bodyView: 'json' }
+  assert.equal(withDefaultBodyView(raw), raw)
 })

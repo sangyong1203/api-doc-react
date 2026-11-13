@@ -183,6 +183,15 @@ export function describeMultipart(request: SampleRequest): string {
   }), null, 2)
 }
 
+// 초기 편집 보기만 설정합니다. JSON 오류가 있으면 원문 보기와 입력을 보존합니다.
+export function withDefaultBodyView(request: SampleRequest): SampleRequest {
+  if (request.bodyView) { return request }
+  try {
+    const imported = importBody(request.body, request.schema?.body ?? [])
+    return { ...request, bodyView: 'fields', bodyValues: imported.values, schema: { fields: request.schema?.fields ?? {}, body: imported.fields } }
+  } catch { return { ...request, bodyView: 'json' } }
+}
+
 export function getRequestBody(request: SampleRequest): string {
   if (request.bodyFormat === 'multipart') { return describeMultipart(request) }
   return request.bodyView === 'fields' ? serializeBody(request.schema?.body ?? [], request.bodyValues ?? {}) : request.body

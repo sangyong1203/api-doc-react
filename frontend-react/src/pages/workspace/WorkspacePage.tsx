@@ -9,7 +9,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { CollectionSidebar } from '@/features/collections/components/CollectionSidebar'
 import { CollectionEditDialog } from '@/features/collections/components/CollectionEditDialog'
 import type { CollectionDeleteTarget, CollectionDialogTarget, CollectionFormValues } from '@/features/collections/types'
-import { getRequestBody, validateRequest } from '@/features/api-editor/requestSchema'
+import { getRequestBody, validateRequest, withDefaultBodyView } from '@/features/api-editor/requestSchema'
 import { RequestEditor } from '@/features/api-editor/components/RequestEditor'
 import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
 import { PayloadPicker } from '@/features/payload-presets/components/PayloadPicker'
@@ -26,7 +26,7 @@ function createInitialPreset(request: SampleRequest): PayloadPreset {
 }
 
 function createTab(request: SampleRequest, preset = createInitialPreset(request)): WorkspaceTab {
-  const values = applyPayload(request, preset.values)
+  const values = withDefaultBodyView(applyPayload(request, preset.values))
   return { request: values, saved: values, selectedPresetId: preset.id, execution: { status: 'idle' }, requestSnapshot: null }
 }
 
@@ -187,7 +187,7 @@ export function WorkspacePage() {
     }
     const values = copyPayload(preset?.values ?? base)
     updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: id,
-      request: applyPayload(tab.request, values), saved: applyPayload(tab.saved, values) }))
+      request: withDefaultBodyView(applyPayload(tab.request, values)), saved: withDefaultBodyView(applyPayload(tab.saved, values)) }))
   }
 
   function addPreset() {
@@ -218,7 +218,7 @@ export function WorkspacePage() {
     }
     if (activeTab.selectedPresetId === id) {
       updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: fallback.id,
-        request: applyPayload(tab.request, fallback.values), saved: applyPayload(tab.saved, fallback.values) }))
+        request: withDefaultBodyView(applyPayload(tab.request, fallback.values)), saved: withDefaultBodyView(applyPayload(tab.saved, fallback.values)) }))
     }
     setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: presets.filter((item) => item.id !== id) }))
     if (defaultPresets[activeTab.request.id] === id) { setDefaultPresets((current) => ({ ...current, [activeTab.request.id]: fallback.id })) }

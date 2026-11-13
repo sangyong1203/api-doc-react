@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TabsContent } from '@/components/ui/tabs'
+import { ViewTabs } from '@/components/ViewTabs'
 import type { ExecutionState, RequestSnapshot } from '@/features/workspace/types'
 
 type ResponseViewerProps = {
@@ -31,14 +32,9 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
     <section className="response-viewer" aria-label="요청 및 응답 결과">
       <Card className="response-board" size="sm">
         <CardContent className="response-board-content">
-          <Tabs className="response-view-tabs" defaultValue="response">
-            <div className="response-heading">
-              <TabsList variant="line" aria-label="요청 및 응답 데이터">
-                <TabsTrigger value="headers">Headers</TabsTrigger>
-                <TabsTrigger value="payload">Payload</TabsTrigger>
-                <TabsTrigger value="response">Response</TabsTrigger>
-              </TabsList>
-            </div>
+          <ViewTabs className="response-view-tabs" defaultValue="response" label="요청 및 응답 데이터" items={[
+            { value: 'headers', label: 'Headers' }, { value: 'payload', label: 'Payload' }, { value: 'response', label: 'Response' },
+          ]}>
             <Separator className="response-section-divider" />
             <TabsContent className="response-view-content" value="headers">
               {responseMetrics}
@@ -112,7 +108,7 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
                 </Empty>
               )}
             </TabsContent>
-          </Tabs>
+          </ViewTabs>
           <div className="sr-only" role="status">
             {execution.status === 'complete' ? `실행 완료: ${execution.response.status}`
               : execution.status === 'running' ? '실행 중'

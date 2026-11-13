@@ -145,6 +145,16 @@ features/api-editor/
 - 입력·아이콘 버튼에 접근 가능한 이름을 제공하고, 다이얼로그 포커스와 키보드 조작을 확인합니다.
 - 로딩·빈 데이터·오류·미저장 상태를 구분합니다.
 
+### 공통 보기 탭
+
+`src/components/ViewTabs.tsx`는 shadcn/ui Tabs를 조합한 밑줄 스타일 탭입니다. 본문 편집 보기와 요청·응답 결과 보기에서 사용하며, 밑줄은 기본 foreground 테마 색상을 따릅니다.
+
+- `items`: 각 탭의 고유 `value`와 표시할 `label` 목록.
+- `label`: 탭 목록의 접근 가능한 이름.
+- `value`·`onValueChange`: 변환 검증 등 선택을 직접 제어할 때 사용. 단순 초기 선택은 `defaultValue`로 지정.
+- `toolbar`: 탭 오른쪽에 배치할 선택창·작업 버튼.
+- `children`: 같은 `value`를 가진 공통 `TabsContent`로 본문 구성.
+
 ## 상태와 데이터 처리 규칙
 
 - 컴포넌트 내부 상태는 `useState` 또는 `useReducer`로 관리하고, 여러 컴포넌트가 함께 쓰는 경우 가장 가까운 공통 부모로 올립니다.

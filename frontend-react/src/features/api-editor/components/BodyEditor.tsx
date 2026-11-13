@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TabsContent } from '@/components/ui/tabs'
+import { ViewTabs } from '@/components/ViewTabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 import type { BodyField, FieldType, SampleRequest } from '@/features/workspace/types'
@@ -83,13 +85,9 @@ export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
   }
   if (root && rootContainer) { visit(root.id, 0) } else { visit(null, 0) }
 
-  return <div className="body-editor flex min-h-0 flex-1 flex-col gap-2">
-    <div className="body-editor-toolbar flex shrink-0 flex-wrap items-center gap-2">
-      {!schemaOnly && request.bodyFormat !== 'multipart' && <>
-        <Button variant={view === 'fields' ? 'secondary' : 'ghost'} size="sm" aria-pressed={view === 'fields'} onClick={() => changeView('fields')}>필드 편집</Button>
-        <Button variant={view === 'json' ? 'secondary' : 'ghost'} size="sm" aria-pressed={view === 'json'} onClick={() => changeView('json')}>JSON</Button>
-      </>}
-      <div className="body-toolbar-actions ml-auto flex items-center gap-2">
+  return <ViewTabs className="body-editor flex min-h-0 flex-1 flex-col gap-2" value={view} onValueChange={(next) => changeView(next as 'fields' | 'json')}
+    label="본문 편집 방식" items={!schemaOnly && request.bodyFormat !== 'multipart' ? [{ value: 'fields', label: '필드 편집' }, { value: 'json', label: 'JSON' }] : []}
+    toolbar={<>
         {!schemaOnly && <Select value={request.bodyFormat ?? 'json'} onValueChange={(format) => { setError(''); onChange({ ...request, bodyFormat: format as 'json' | 'multipart' }) }}>
           <SelectTrigger className="body-format-select w-40" aria-label="본문 형식"><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem value="json">JSON</SelectItem><SelectItem value="multipart">Multipart Form</SelectItem></SelectContent>
@@ -97,11 +95,11 @@ export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
         {!schemaOnly && request.bodyFormat === 'multipart'
           ? <Button className="body-add-field" variant="ghost" size="sm" onClick={() => onChange({ ...request, multipartFields: [...request.multipartFields ?? [], { id: crypto.randomUUID(), name: '', enabled: true, value: '' }] })}><Plus />필드 추가</Button>
           : view === 'fields' && root && rootContainer && <Button className="body-add-field" variant="ghost" size="sm" onClick={() => add(root)}><Plus />{root.type === 'array' ? '항목 추가' : '필드 추가'}</Button>}
-      </div>
-    </div>
+    </>}>
+
     {!schemaOnly && request.bodyFormat === 'multipart' ? <MultipartEditor request={request} onChange={onChange} /> : <>
     {(error || bodyError) && <p className="body-editor-error text-sm text-error" role="alert">{error || bodyError}</p>}
-    <div className="body-editor-content min-h-0 flex-1 overflow-auto">
+    <TabsContent className="body-editor-content min-h-0 flex-1 overflow-auto" value={view} aria-label={schemaOnly ? '응답 필드 명세' : undefined}>
       {view === 'json' ? <Suspense fallback={<p>편집기 준비 중…</p>}><JsonEditor initialValue={request.body} label="요청 JSON 본문" onChange={(body) => { setError(''); onChange({ ...request, body }) }} /></Suspense> :
         <Table className={`body-fields-table table-fixed [&_input]:bg-transparent! ${schemaOnly ? 'min-w-[820px]' : 'min-w-[1000px]'}`} aria-label={schemaOnly ? "응답 필드 명세" : "JSON 본문 필드 명세"}>
           <colgroup>
@@ -129,8 +127,8 @@ export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
             </TableRow>
           })}{rows.length === 0 && <TableRow><TableCell colSpan={schemaOnly ? 5 : 6} className="body-fields-empty text-muted-foreground">등록된 필드가 없습니다. 필드를 추가하세요.</TableCell></TableRow>}</TableBody>
         </Table>}
-    </div>
+    </TabsContent>
     <AlertDialog open={Boolean(deleting)} onOpenChange={(open) => { if (!open) { setDeleting(null) } }}><AlertDialogContent><AlertDialogTitle>{schemaOnly ? '응답' : '본문'} 필드 삭제</AlertDialogTitle><AlertDialogDescription>하위 필드를 포함한 {deleting?.length}개 필드를 삭제하시겠습니까? API 공통 명세에서 제거됩니다.</AlertDialogDescription><div className="body-delete-actions flex justify-end gap-2"><AlertDialogCancel asChild><Button variant="outline">취소</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant="destructive" onClick={() => { if (deleting) { remove(deleting) } }}>삭제</Button></AlertDialogAction></div></AlertDialogContent></AlertDialog>
     </>}
-  </div>
+  </ViewTabs>
 }
