@@ -41,7 +41,7 @@ export function RequestToolbar({ request, dirty, running, onChange, onSave, onRu
         <div className="request-save-controls">
           {dirty && <Badge variant="secondary">미저장</Badge>}
           <Button className="request-save text-xs" variant="outline" size="sm" disabled={!dirty} onClick={onSave}>
-            <Save aria-hidden="true" />샘플 저장
+            <Save aria-hidden="true" />저장
           </Button>
         </div>
       </div>
@@ -70,7 +70,7 @@ export function RequestToolbar({ request, dirty, running, onChange, onSave, onRu
             </Button>
           ) : (
             <Button className="request-send text-xs" onClick={onRun} disabled={!request.url.trim()}>
-              <Play aria-hidden="true" />샘플 실행
+              <Play aria-hidden="true" />실행
             </Button>
           )}
         </div>

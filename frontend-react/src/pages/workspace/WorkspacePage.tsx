@@ -55,7 +55,7 @@ export function WorkspacePage() {
       return
     }
     const dirty = JSON.stringify(target.request) !== JSON.stringify(target.saved)
-    if ((dirty || target.execution.status === 'running') && !window.confirm(`${target.request.name}: ${dirty ? '미저장 변경이 사라집니다. ' : ''}${target.execution.status === 'running' ? '샘플 실행을 중단합니다. ' : ''}탭을 닫으시겠습니까?`)) {
+    if ((dirty || target.execution.status === 'running') && !window.confirm(`${target.request.name}: ${dirty ? '미저장 변경이 사라집니다. ' : ''}${target.execution.status === 'running' ? '실행을 중단합니다. ' : ''}탭을 닫으시겠습니까?`)) {
       return
     }
     clearTimeout(timers.current.get(id))
@@ -110,8 +110,8 @@ export function WorkspacePage() {
           <Select value={environment} onValueChange={setEnvironment}>
             <SelectTrigger size="sm" id="workspace-environment" aria-label="환경"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="local">Local · 샘플</SelectItem>
-              <SelectItem value="dev">Development · 샘플</SelectItem>
+              <SelectItem value="local">Local</SelectItem>
+              <SelectItem value="dev">Development</SelectItem>
             </SelectContent>
           </Select>
         </div>

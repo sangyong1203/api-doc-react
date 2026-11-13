@@ -51,7 +51,7 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
                   <h3 className="exchange-data-title">Response Headers</h3>
                   <pre className="response-code"><code>{execution.status === 'complete' ? execution.response.headers || '(없음)' : '응답 헤더가 없습니다.'}</code></pre>
                 </section>
-                <p className="request-snapshot-notice">샘플 실행 시점의 입력값과 예시 응답입니다. 자동 헤더·변수 치환 전이며 실제 전송 내역은 아닙니다.</p>
+                <p className="request-snapshot-notice">실행 시점의 입력값과 예시 응답입니다. 자동 헤더·변수 치환 전이며 실제 전송 내역은 아닙니다.</p>
               </div>
             </TabsContent>
             <TabsContent className="response-view-content" value="payload">
@@ -70,13 +70,13 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
                     <h3 className="exchange-data-title">Request Body</h3>
                     <pre className="response-code"><code>{requestSnapshot.body || '(본문 없음)'}</code></pre>
                   </section>
-                  <p className="request-snapshot-notice">샘플 실행 시작 시점의 입력값입니다. 실제 전송 내역은 아닙니다.</p>
+                  <p className="request-snapshot-notice">실행 시작 시점의 입력값입니다. 실제 전송 내역은 아닙니다.</p>
                 </div>
               ) : (
                 <Empty className="request-snapshot-empty p-3">
                   <EmptyHeader>
                     <EmptyTitle>아직 실행한 요청이 없습니다</EmptyTitle>
-                    <EmptyDescription>샘플 실행 후 당시의 Path·Query·Body를 확인할 수 있습니다.</EmptyDescription>
+                    <EmptyDescription>실행 후 당시의 Path·Query·Body를 확인할 수 있습니다.</EmptyDescription>
                   </EmptyHeader>
                 </Empty>
               )}
@@ -88,7 +88,7 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
               ) : execution.status === 'error' ? (
                 <Alert className="response-error" variant="error">
                   <CircleAlert aria-hidden="true" />
-                  <AlertTitle>샘플 통신 오류</AlertTitle>
+                  <AlertTitle>통신 오류</AlertTitle>
                   <AlertDescription>{execution.message}</AlertDescription>
                 </Alert>
               ) : (
@@ -100,13 +100,13 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
                         : <ArrowDownToLine aria-hidden="true" />}
                     </EmptyMedia>
                     <EmptyTitle>
-                      {execution.status === 'running' ? '샘플 응답 준비 중'
-                        : execution.status === 'cancelled' ? '샘플 실행이 취소되었습니다'
+                      {execution.status === 'running' ? '응답 준비 중'
+                        : execution.status === 'cancelled' ? '실행이 취소되었습니다'
                         : '응답을 확인할 준비가 되었습니다'}
                     </EmptyTitle>
                     <EmptyDescription>
                       {execution.status === 'running' ? '취소 버튼으로 실행을 중단할 수 있습니다.'
-                        : '샘플 실행을 누르면 고정된 성공 응답을 표시합니다.'}
+                        : '실행을 누르면 고정된 성공 응답을 표시합니다.'}
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -114,9 +114,9 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
             </TabsContent>
           </Tabs>
           <div className="sr-only" role="status">
-            {execution.status === 'complete' ? `샘플 실행 완료: ${execution.response.status}`
-              : execution.status === 'running' ? '샘플 실행 중'
-              : execution.status === 'cancelled' ? '샘플 실행 취소됨'
+            {execution.status === 'complete' ? `실행 완료: ${execution.response.status}`
+              : execution.status === 'running' ? '실행 중'
+              : execution.status === 'cancelled' ? '실행 취소됨'
               : execution.status === 'error' ? execution.message : ''}
           </div>
         </CardContent>

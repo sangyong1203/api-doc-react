@@ -44,7 +44,7 @@ export function CollectionSidebar({ requests, selectedId, onSelect }: Collection
         <Folder aria-hidden="true" />
         <span>Robot API</span>
       </div>
-      <nav className="collection-tree" aria-label="샘플 API 목록">
+      <nav className="collection-tree" aria-label="API 목록">
         {folders.map((folder) => {
           const expanded = term !== '' || !collapsedFolders.includes(folder)
           return (

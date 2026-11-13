@@ -92,7 +92,7 @@ export function WorkspaceTabs({ tabs, onClose }: WorkspaceTabsProps) {
                   {request.name}
                   {dirty && <Badge variant="secondary">미저장</Badge>}
                   {execution.status === 'running' && (
-                    <LoaderCircle className="motion-safe:animate-spin" aria-label="샘플 실행 중" />
+                    <LoaderCircle className="motion-safe:animate-spin" aria-label="실행 중" />
                   )}
                 </TabsTrigger>
                 <Button
