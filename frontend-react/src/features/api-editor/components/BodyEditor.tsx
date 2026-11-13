@@ -85,7 +85,7 @@ export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
   }
   if (root && rootContainer) { visit(root.id, 0) } else { visit(null, 0) }
 
-  return <ViewTabs className="body-editor flex min-h-0 flex-1 flex-col gap-2" value={view} onValueChange={(next) => changeView(next as 'fields' | 'json')}
+  return <ViewTabs variant="button" className="body-editor flex min-h-0 flex-1 flex-col gap-2" value={view} onValueChange={(next) => changeView(next as 'fields' | 'json')}
     label="본문 편집 방식" items={!schemaOnly && request.bodyFormat !== 'multipart' ? [{ value: 'fields', label: '필드 편집' }, { value: 'json', label: 'JSON' }] : []}
     toolbar={<>
         {!schemaOnly && <Select value={request.bodyFormat ?? 'json'} onValueChange={(format) => { setError(''); onChange({ ...request, bodyFormat: format as 'json' | 'multipart' }) }}>

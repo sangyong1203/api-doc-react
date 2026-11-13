@@ -266,9 +266,9 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
                   </Button>
                 )}
                 <div className="request-tab-list-scroll" id={tabViewportId} ref={tabViewportRef}>
-                  <TabsList className="request-tab-list gap-2 bg-transparent" aria-label="요청 입력 항목" ref={tabListRef}>
+                  <TabsList variant="line" className="request-tab-list gap-2 bg-transparent" aria-label="요청 입력 항목" ref={tabListRef}>
                     {sections.map((item) => (
-                      <TabsTrigger className="request-section-trigger focus-visible:ring-0 focus-visible:outline-none focus-visible:border-transparent data-active:border-transparent! data-active:bg-primary! data-active:shadow-none!" key={item.value} value={item.value}>
+                      <TabsTrigger className="request-section-trigger focus-visible:ring-0 focus-visible:outline-none focus-visible:border-transparent" key={item.value} value={item.value}>
                         <span className="request-section-label relative">
                           {item.label}
                           {item.hasData && (

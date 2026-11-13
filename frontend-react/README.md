@@ -147,7 +147,7 @@ features/api-editor/
 
 ### 공통 보기 탭
 
-`src/components/ViewTabs.tsx`는 shadcn/ui Tabs를 조합한 밑줄 스타일 탭입니다. 본문 편집 보기와 요청·응답 결과 보기에서 사용하며, 밑줄은 기본 foreground 테마 색상을 따릅니다.
+`src/components/ViewTabs.tsx`는 shadcn/ui Tabs를 조합한 공통 보기 탭입니다. `variant="line"`은 기본 foreground 색상의 밑줄형, `variant="button"`은 primary 배경의 버튼형입니다. 본문 편집 방식은 버튼형, 요청·응답 결과 보기는 밑줄형을 사용합니다.
 
 - `items`: 각 탭의 고유 `value`와 표시할 `label` 목록.
 - `label`: 탭 목록의 접근 가능한 이름.
