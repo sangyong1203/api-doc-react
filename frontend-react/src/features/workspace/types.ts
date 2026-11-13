@@ -63,6 +63,7 @@ export type ExecutionState =
   | { status: 'complete'; response: SampleResponse }
 
 export type RequestSnapshot = {
+  requestUrl: string
   queryString?: string
   bodyFormat?: 'json' | 'multipart'
   body: string

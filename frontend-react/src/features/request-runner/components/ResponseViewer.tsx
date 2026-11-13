@@ -17,6 +17,15 @@ function formatFields(fields: RequestSnapshot['headers']): string {
   return fields.map(({ name, value }) => `${name}: ${value}`).join('\n') || '(없음)'
 }
 
+function hasBodyPayload(body: string): boolean {
+  if (!body.trim()) { return false }
+  try {
+    const value: unknown = JSON.parse(body)
+    if (value !== null && typeof value === 'object') { return Object.keys(value).length > 0 }
+  } catch { /* JSON이 아닌 본문도 내용이 있으면 표시합니다. */ }
+  return true
+}
+
 export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerProps) {
   const responseMetrics = execution.status === 'complete' ? (
     <div className="response-metrics">
@@ -39,12 +48,16 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
             <TabsContent className="response-view-content" value="headers">
               {responseMetrics}
               <div className="exchange-data-sections">
-                <section className="exchange-data-section" aria-label="Request Headers">
-                  <h3 className="exchange-data-title">Request Headers</h3>
+                {requestSnapshot && <section className="exchange-data-section rounded-lg border border-border p-3" aria-label="Request URL">
+                  <h3 className="exchange-data-title border-b border-border pb-2 text-xs font-medium text-muted-foreground">Request URL</h3>
+                  <pre className="response-code whitespace-pre-wrap break-all"><code>{requestSnapshot.requestUrl}</code></pre>
+                </section>}
+                <section className="exchange-data-section rounded-lg border border-border p-3" aria-label="Request Headers">
+                  <h3 className="exchange-data-title border-b border-border pb-2 text-xs font-medium text-muted-foreground">Request Headers</h3>
                   <pre className="response-code"><code>{requestSnapshot ? formatFields(requestSnapshot.headers) : '아직 실행한 요청이 없습니다.'}</code></pre>
                 </section>
-                <section className="exchange-data-section" aria-label="Response Headers">
-                  <h3 className="exchange-data-title">Response Headers</h3>
+                <section className="exchange-data-section rounded-lg border border-border p-3" aria-label="Response Headers">
+                  <h3 className="exchange-data-title border-b border-border pb-2 text-xs font-medium text-muted-foreground">Response Headers</h3>
                   <pre className="response-code"><code>{execution.status === 'complete' ? execution.response.headers || '(없음)' : '응답 헤더가 없습니다.'}</code></pre>
                 </section>
                 <p className="request-snapshot-notice">실행 시점의 입력값과 예시 응답입니다. 자동 헤더·변수 치환 전이며 실제 전송 내역은 아닙니다.</p>
@@ -54,20 +67,20 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
               {responseMetrics}
               {requestSnapshot ? (
                 <div className="exchange-data-sections">
-                  <section className="exchange-data-section" aria-label="실행 당시 Path params">
-                    <h3 className="exchange-data-title">Path params</h3>
+                  {requestSnapshot.pathParams.length > 0 && <section className="exchange-data-section rounded-lg border border-border p-3" aria-label="실행 당시 Path params">
+                    <h3 className="exchange-data-title border-b border-border pb-2 text-xs font-medium text-muted-foreground">Path params</h3>
                     <pre className="response-code"><code>{formatFields(requestSnapshot.pathParams)}</code></pre>
-                  </section>
-                  <section className="exchange-data-section" aria-label="실행 당시 Query params">
-                    <h3 className="exchange-data-title">Query params</h3>
+                  </section>}
+                  {requestSnapshot.queryParams.length > 0 && <section className="exchange-data-section rounded-lg border border-border p-3" aria-label="실행 당시 Query params">
+                    <h3 className="exchange-data-title border-b border-border pb-2 text-xs font-medium text-muted-foreground">Query params</h3>
                     <pre className="response-code"><code>{formatFields(requestSnapshot.queryParams)}</code></pre>
-                    <h4 className="query-string-title text-xs text-muted-foreground">Query string</h4>
-                    <pre className="response-code whitespace-pre-wrap break-all"><code>{requestSnapshot.queryString ? `?${requestSnapshot.queryString}` : '(없음)'}</code></pre>
-                  </section>
-                  <section className="exchange-data-section" aria-label="실행 당시 Request Body">
-                    <h3 className="exchange-data-title">Request Body{requestSnapshot.bodyFormat === 'multipart' ? ' · Multipart Form' : ''}</h3>
-                    <pre className="response-code"><code>{requestSnapshot.body || '(본문 없음)'}</code></pre>
-                  </section>
+                    {requestSnapshot.queryString && <><h4 className="query-string-title text-xs text-muted-foreground">Query string</h4>
+                    <pre className="response-code whitespace-pre-wrap break-all"><code>{`?${requestSnapshot.queryString}`}</code></pre></>}
+                  </section>}
+                  {hasBodyPayload(requestSnapshot.body) && <section className="exchange-data-section rounded-lg border border-border p-3" aria-label="실행 당시 Request Body">
+                    <h3 className="exchange-data-title border-b border-border pb-2 text-xs font-medium text-muted-foreground">Request Body{requestSnapshot.bodyFormat === 'multipart' ? ' · Multipart Form' : ''}</h3>
+                    <pre className="response-code"><code>{requestSnapshot.body}</code></pre>
+                  </section>}
                   <p className="request-snapshot-notice">실행 시작 시점의 입력값입니다. 실제 전송 내역은 아닙니다.</p>
                 </div>
               ) : (

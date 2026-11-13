@@ -83,6 +83,14 @@ export function serializeQuery(fields: RequestField[], specs: Record<string, Fie
   return { fields: result, queryString: parts.join('&') }
 }
 
+// 입력 주소의 기존 Query는 유지하고 새 Query를 연결합니다. fragment는 HTTP 요청 대상에서 제외합니다.
+export function createRequestUrl(url: string, queryString: string): string {
+  const address = url.trim().split('#')[0]
+  if (!queryString) { return address }
+  const separator = address.endsWith('?') || address.endsWith('&') ? '' : address.includes('?') ? '&' : '?'
+  return `${address}${separator}${queryString}`
+}
+
 // JSON 원문을 구조 편집용으로 변환합니다. 같은 경로의 명세 ID·설명·필수 설정은 유지합니다.
 export function importBody(body: string, previous: BodyField[], rootType?: FieldType) {
   const parsed: unknown = JSON.parse(body.trim() || '{}')

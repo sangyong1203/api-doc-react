@@ -1,7 +1,7 @@
 import test from 'node:test'
 import { File } from 'node:buffer'
 import assert from 'node:assert/strict'
-import { addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, createMultipartForm, describeMultipart, withDefaultBodyView, serializeQuery, queryFieldError, validateRequest, validateMultipart, fieldValueError, importBody, parseFieldValue, serializeBody, validateStructure } from './requestSchema.ts'
+import { addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, createMultipartForm, describeMultipart, withDefaultBodyView, createRequestUrl, serializeQuery, queryFieldError, validateRequest, validateMultipart, fieldValueError, importBody, parseFieldValue, serializeBody, validateStructure } from './requestSchema.ts'
 import { applyPayload, copyPayload } from '../payload-presets/types.ts'
 
 test('JSON 구조와 0·false·null·배열 루트가 왕복 변환된다', () => {
@@ -203,4 +203,13 @@ test('Query 빈 선택 배열은 생략하며 필수 빈 배열과 원소 타입
   assert.ok(queryFieldError('[]', { ...optional, required: true }))
   assert.throws(() => serializeQuery([{ ...field, value: '[1,"bad"]' }], { ids: optional }))
   assert.throws(() => serializeQuery([{ ...field, name: '' }], { ids: optional }))
+})
+
+
+test('Request URL은 기존 Query를 보존하고 fragment를 전송 대상에서 제외한다', () => {
+  assert.equal(createRequestUrl('https://api.test/items', 'ids=1&ids=2'), 'https://api.test/items?ids=1&ids=2')
+  assert.equal(createRequestUrl('https://api.test/items?limit=10#section', 'ids=1,2'), 'https://api.test/items?limit=10&ids=1,2')
+  assert.equal(createRequestUrl('https://api.test/items?', 'page=1'), 'https://api.test/items?page=1')
+  assert.equal(createRequestUrl('https://api.test/items?limit=10&', 'page=1'), 'https://api.test/items?limit=10&page=1')
+  assert.equal(createRequestUrl('{{baseUrl}}/items#section', ''), '{{baseUrl}}/items')
 })
