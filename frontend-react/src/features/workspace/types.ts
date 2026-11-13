@@ -55,6 +55,7 @@ export type RequestSnapshot = {
 
 export type WorkspaceTab = {
   request: SampleRequest
+  selectedPresetId: string | null
   saved: SampleRequest
   execution: ExecutionState
   requestSnapshot: RequestSnapshot | null

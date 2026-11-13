@@ -10,6 +10,8 @@ import { CollectionEditDialog } from '@/features/collections/components/Collecti
 import type { CollectionDeleteTarget, CollectionDialogTarget, CollectionFormValues } from '@/features/collections/types'
 import { RequestEditor } from '@/features/api-editor/components/RequestEditor'
 import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
+import { PayloadPicker } from '@/features/payload-presets/components/PayloadPicker'
+import { copyPayload, type PayloadPreset } from '@/features/payload-presets/types'
 import { ResponseViewer } from '@/features/request-runner/components/ResponseViewer'
 import { WorkspaceTabs } from '@/features/workspace/components/WorkspaceTabs'
 import { EnvironmentPicker } from '@/features/environments/components/EnvironmentPicker'
@@ -17,8 +19,13 @@ import { createSampleResponse, SAMPLE_COLLECTIONS, SAMPLE_FOLDERS, SAMPLE_REQUES
 import type { RequestField, SampleRequest, WorkspaceTab } from '@/features/workspace/types'
 import '@/styles/workspace.css'
 
-function createTab(request: SampleRequest): WorkspaceTab {
-  return { request, saved: request, execution: { status: 'idle' }, requestSnapshot: null }
+function createInitialPreset(request: SampleRequest): PayloadPreset {
+  return { id: `${request.id}-preset-1`, name: '입력 세트 1', description: '', values: copyPayload(request) }
+}
+
+function createTab(request: SampleRequest, preset = createInitialPreset(request)): WorkspaceTab {
+  const values = { ...request, ...copyPayload(preset.values) }
+  return { request: values, saved: values, selectedPresetId: preset.id, execution: { status: 'idle' }, requestSnapshot: null }
 }
 
 function copyActiveFields(fields: RequestField[]): Array<Pick<RequestField, 'name' | 'value'>> {
@@ -31,6 +38,8 @@ export function WorkspacePage() {
   const [collections, setCollections] = useState(SAMPLE_COLLECTIONS)
   const [folders, setFolders] = useState(SAMPLE_FOLDERS)
   const [requests, setRequests] = useState(SAMPLE_REQUESTS)
+  const [presetsByApi, setPresetsByApi] = useState<Record<string, PayloadPreset[]>>(() => Object.fromEntries(SAMPLE_REQUESTS.map((request) => [request.id, [createInitialPreset(request)]])))
+  const [defaultPresets, setDefaultPresets] = useState<Record<string, string | null>>({})
   const [editTarget, setEditTarget] = useState<CollectionDialogTarget | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CollectionDeleteTarget | null>(null)
   const [tabs, setTabs] = useState<WorkspaceTab[]>([createTab(SAMPLE_REQUESTS[0])])
@@ -59,7 +68,10 @@ export function WorkspacePage() {
 
   function openRequest(request: SampleRequest) {
     if (!tabs.some((tab) => tab.request.id === request.id)) {
-      setTabs((current) => [...current, createTab(request)])
+      const presets = presetsByApi[request.id] ?? [createInitialPreset(request)]
+      const preset = presets.find((item) => item.id === defaultPresets[request.id]) ?? presets[0]
+      const tab = createTab(request, preset)
+      setTabs((current) => [...current, tab])
     }
     setActiveId(request.id)
   }
@@ -106,6 +118,7 @@ export function WorkspacePage() {
       } else {
         const request: SampleRequest = { id: crypto.randomUUID(), ...patch, pathParams: [], queryParams: [], headers: [], body: '', errorResponses: [] }
         setRequests((current) => [...current, request])
+        setPresetsByApi((current) => ({ ...current, [request.id]: [createInitialPreset(request)] }))
         setTabs((current) => [...current, createTab(request)])
         setActiveId(request.id)
       }
@@ -118,6 +131,7 @@ export function WorkspacePage() {
     // 포함 API의 실행을 먼저 해제하여 삭제 이후 결과가 다시 생성되지 않게 합니다.
     deleteRequestIds.forEach((id) => { clearTimeout(timers.current.get(id)); timers.current.delete(id) })
     setRequests((current) => current.filter((request) => !deleteRequestIds.has(request.id)))
+    setPresetsByApi((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !deleteRequestIds.has(id))))
     const remaining = tabs.filter((tab) => !deleteRequestIds.has(tab.request.id))
     setTabs(remaining)
     if (activeId && deleteRequestIds.has(activeId)) { setActiveId(remaining[0]?.request.id ?? null) }
@@ -147,6 +161,46 @@ export function WorkspacePage() {
     if (activeId === id) {
       setActiveId(remaining[Math.min(index, remaining.length - 1)]?.request.id ?? null)
     }
+  }
+
+  function selectPreset(id: string | null) {
+    if (!activeTab || id === activeTab.selectedPresetId) { return }
+    const base = requests.find((request) => request.id === activeTab.request.id)
+    const preset = (presetsByApi[activeTab.request.id] ?? []).find((item) => item.id === id)
+    if (!base || (id && !preset)) { return }
+    if (JSON.stringify(copyPayload(activeTab.request)) !== JSON.stringify(copyPayload(activeTab.saved))
+      && !window.confirm('현재 입력값의 미저장 변경을 버리고 세트를 전환하시겠습니까?')) { return }
+    const values = copyPayload(preset?.values ?? base)
+    updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: id,
+      request: { ...tab.request, ...values }, saved: { ...tab.saved, ...copyPayload(values) } }))
+  }
+
+  function addPreset() {
+    if (!activeTab) { return }
+    const presets = presetsByApi[activeTab.request.id] ?? []
+    let suffix = 1
+    while (presets.some((item) => item.name === `입력 세트 ${suffix}`)) { suffix += 1 }
+    const preset = { id: crypto.randomUUID(), name: `입력 세트 ${suffix}`, description: '', values: copyPayload(activeTab.request) }
+    setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: [...presets, preset] }))
+    updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: preset.id,
+      saved: { ...tab.saved, ...copyPayload(preset.values) } }))
+  }
+
+  function deletePreset(id: string) {
+    if (!activeTab) { return }
+    const presets = presetsByApi[activeTab.request.id] ?? []
+    if (presets.length <= 1) { return }
+    const remaining = presets.filter((item) => item.id !== id)
+    const fallback = remaining.find((item) => item.id === defaultPresets[activeTab.request.id]) ?? remaining[0]
+    const target = presets.find((item) => item.id === id)
+    const dirty = activeTab.selectedPresetId === id && JSON.stringify(copyPayload(activeTab.request)) !== JSON.stringify(copyPayload(activeTab.saved))
+    if (!target || !window.confirm(`'${target.name}' 입력 세트를 삭제하시겠습니까?${dirty ? ' 현재 입력의 미저장 변경도 사라집니다.' : ''}`)) { return }
+    if (activeTab.selectedPresetId === id) {
+      updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: fallback.id,
+        request: { ...tab.request, ...copyPayload(fallback.values) }, saved: { ...tab.saved, ...copyPayload(fallback.values) } }))
+    }
+    setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: presets.filter((item) => item.id !== id) }))
+    if (defaultPresets[activeTab.request.id] === id) { setDefaultPresets((current) => ({ ...current, [activeTab.request.id]: fallback.id })) }
   }
 
   // 요청 ID별 타이머를 관리해 탭 전환·취소·닫기 후 다른 탭에 결과가 섞이지 않게 합니다.
@@ -209,14 +263,23 @@ export function WorkspacePage() {
                 onChange={(request) => updateTab(request.id, (tab) => ({ ...tab, request }))}
                 onSave={() => {
                   updateTab(activeTab.request.id, (tab) => ({ ...tab, saved: tab.request }))
-                  setRequests((current) => current.map((request) =>
-                    request.id === activeTab.request.id ? activeTab.request : request))
+                  if (activeTab.selectedPresetId) {
+                    const selectedId = activeTab.selectedPresetId
+                    setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: (current[activeTab.request.id] ?? []).map((preset) =>
+                      preset.id === selectedId ? { ...preset, values: copyPayload(activeTab.request) } : preset) }))
+                  }
+                  setRequests((current) => current.map((request) => request.id === activeTab.request.id
+                    ? { ...activeTab.request, ...(activeTab.selectedPresetId ? copyPayload(request) : {}) } : request))
                 }}
                 onRun={runSample}
                 onCancel={cancelSample}
               />
               <div className="request-response-layout">
                 <RequestEditor
+                  payloadPicker={<PayloadPicker presets={presetsByApi[activeTab.request.id] ?? []} selectedId={activeTab.selectedPresetId}
+                    defaultId={defaultPresets[activeTab.request.id] ?? presetsByApi[activeTab.request.id]?.[0]?.id ?? null} onSelect={selectPreset} onAdd={addPreset} onDelete={deletePreset}
+                    onDefault={(id) => setDefaultPresets((current) => ({ ...current, [activeTab.request.id]: id }))}
+                    onRename={(id, name) => setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: (current[activeTab.request.id] ?? []).map((preset) => preset.id === id ? { ...preset, name } : preset) }))} />}
                   request={activeTab.request}
                   onChange={(request) => updateTab(request.id, (tab) => ({ ...tab, request }))}
                 />

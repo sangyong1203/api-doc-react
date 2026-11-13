@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
+import { type ReactNode, lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import type { ErrorResponseExample, RequestField, SampleRequest } from '@/featur
 const JsonEditor = lazy(() => import('./JsonEditor').then((module) => ({ default: module.JsonEditor })))
 
 type RequestEditorProps = {
+  payloadPicker: ReactNode
   request: SampleRequest
   onChange: (request: SampleRequest) => void
 }
@@ -143,7 +144,7 @@ function ErrorResponseCard({ response, index, onChange, onDelete }: ErrorRespons
   )
 }
 
-export function RequestEditor({ request, onChange }: RequestEditorProps) {
+export function RequestEditor({ request, onChange, payloadPicker }: RequestEditorProps) {
   const [section, setSection] = useState('query')
   const [tabScroll, setTabScroll] = useState({ overflowing: false, canScrollLeft: false, canScrollRight: false })
   const tabNavigationRef = useRef<HTMLDivElement>(null)
@@ -279,6 +280,7 @@ export function RequestEditor({ request, onChange }: RequestEditorProps) {
                   </Button>
                 )}
               </div>
+              {payloadPicker}
               {section !== 'body' && (
                 <Button className="request-add-field" variant="ghost" size="sm" onClick={section === 'errors' ? addErrorResponse : addField}>
                   <Plus aria-hidden="true" />{section === 'errors' ? '오류 응답 추가' : '행 추가'}
