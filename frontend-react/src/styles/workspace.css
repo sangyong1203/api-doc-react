@@ -7,7 +7,7 @@
 .environment-picker { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .workspace-body { display: grid; grid-template-columns: 280px auto minmax(0, 1fr); flex: 1; min-height: 0; }
 .collection-sidebar { display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow-y: auto; padding: 16px; }
-.sidebar-heading, .fields-heading, .request-heading, .body-heading, .response-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sidebar-heading, .request-heading, .body-heading, .response-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .collection-title { display: flex; align-items: center; gap: 8px; }
 .collection-title > svg { width: 24px; height: 24px; flex-shrink: 0; }
 .collection-folder { display: flex; flex-direction: column; align-items: stretch;  }
@@ -45,7 +45,7 @@
 .method-select { flex-shrink: 0; }
 .url-input { flex: 1; min-width: 0; }
 .request-section-content { min-height: 0; overflow: auto; padding-top: 4px; }
-.fields-heading, .body-heading { margin-bottom: 4px; }
+.body-heading { margin-bottom: 4px; }
 .body-heading { justify-content: flex-start; flex-shrink: 0; flex-wrap: wrap; }
 .request-body-content[data-state="active"] { display: flex; flex-direction: column; overflow: hidden; }
 .request-body-scroll { flex: 1; min-height: 0; overflow: auto; }

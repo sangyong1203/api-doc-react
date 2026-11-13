@@ -32,70 +32,71 @@ function RequestFields({ fields, label, onAdd, onChange }: RequestFieldsProps) {
 
   return (
     <div className="request-fields">
-      <div className="fields-heading">
-        <span>{label}</span>
-        {onAdd && (
+      {onAdd && (
+        <div className="response-field-actions mb-1 flex justify-end">
           <Button className="response-add-field" variant="ghost" size="sm" onClick={onAdd}>
             <Plus aria-hidden="true" />키·값 추가
           </Button>
-        )}
-      </div>
-      <Table className="fields-table">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="field-action-cell"><span className="sr-only">사용</span></TableHead>
-            <TableHead>키</TableHead>
-            <TableHead>값</TableHead>
-            <TableHead className="field-action-cell"><span className="sr-only">삭제</span></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {fields.map((field, index) => (
-            <TableRow key={field.id}>
-              <TableCell>
-                <Checkbox
-                  checked={field.enabled}
-                  aria-label={`${label} ${index + 1}행 사용`}
-                  onCheckedChange={(checked) => updateField(field.id, { enabled: checked === true })}
-                />
-              </TableCell>
-              <TableCell>
-                <Input
-                  className="field-input"
-                  aria-label={`${label} ${index + 1}행 키`}
-                  placeholder="Key"
-                  value={field.name}
-                  onChange={(event) => updateField(field.id, { name: event.target.value })}
-                />
-              </TableCell>
-              <TableCell>
-                <Input
-                  className="field-input"
-                  aria-label={`${label} ${index + 1}행 값`}
-                  placeholder="Value"
-                  value={field.value}
-                  onChange={(event) => updateField(field.id, { value: event.target.value })}
-                />
-              </TableCell>
-              <TableCell>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={`${label} ${index + 1}행 삭제`}
-                  onClick={() => onChange(fields.filter((item) => item.id !== field.id))}
-                >
-                  <Trash2 aria-hidden="true" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-          {fields.length === 0 && (
+        </div>
+      )}
+      <div className="fields-table-frame overflow-hidden">
+        <Table className="fields-table" aria-label={label}>
+          <TableHeader className="fields-table-header bg-muted/50">
             <TableRow>
-              <TableCell colSpan={4}>등록된 항목이 없습니다. 행을 추가해 입력하세요.</TableCell>
+              <TableHead className="field-action-cell"><span className="sr-only">사용</span></TableHead>
+              <TableHead>키</TableHead>
+              <TableHead>값</TableHead>
+              <TableHead className="field-action-cell"><span className="sr-only">삭제</span></TableHead>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {fields.map((field, index) => (
+              <TableRow key={field.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={field.enabled}
+                    aria-label={`${label} ${index + 1}행 사용`}
+                    onCheckedChange={(checked) => updateField(field.id, { enabled: checked === true })}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    className="field-input"
+                    aria-label={`${label} ${index + 1}행 키`}
+                    placeholder="Key"
+                    value={field.name}
+                    onChange={(event) => updateField(field.id, { name: event.target.value })}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    className="field-input"
+                    aria-label={`${label} ${index + 1}행 값`}
+                    placeholder="Value"
+                    value={field.value}
+                    onChange={(event) => updateField(field.id, { value: event.target.value })}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`${label} ${index + 1}행 삭제`}
+                    onClick={() => onChange(fields.filter((item) => item.id !== field.id))}
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {fields.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4}>등록된 항목이 없습니다. 행을 추가해 입력하세요.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   )
 }
@@ -252,9 +253,9 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
                   </Button>
                 )}
                 <div className="request-tab-list-scroll" id={tabViewportId} ref={tabViewportRef}>
-                  <TabsList aria-label="요청 입력 항목" ref={tabListRef}>
+                  <TabsList className="request-tab-list gap-2 bg-transparent" aria-label="요청 입력 항목" ref={tabListRef}>
                     {sections.map((item) => (
-                      <TabsTrigger className="request-section-trigger data-active:border-transparent! data-active:bg-primary! data-active:shadow-none!" key={item.value} value={item.value}>
+                      <TabsTrigger className="request-section-trigger focus-visible:ring-0 focus-visible:outline-none focus-visible:border-transparent data-active:border-transparent! data-active:bg-primary! data-active:shadow-none!" key={item.value} value={item.value}>
                         <span className="request-section-label relative">
                           {item.label}
                           {item.hasData && (
