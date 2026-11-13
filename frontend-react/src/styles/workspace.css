@@ -68,10 +68,11 @@
 .workspace-empty { overflow-y: auto; }
 
 /* 프리셋에 대응 variant가 없는 메서드의 기존 의미별 색상입니다. */
-.method-get, .method-head { color: #147d58; }
-.method-post { color: #9b6710; }
-.method-put, .method-patch { color: #396ca3; }
-.method-options { color: #7957a2; }
+.method-get { color: var(--color-green-500); border:none}
+.method-post { color: var(--color-blue-400); border:none}
+.method-put, .method-patch { color: var(--color-orange-400); border:none}
+.method-delete { color: var(--color-red-400); border:none}
+.method-options, .method-head { color: var(--color-purple-400); border:none}
 
 /* CodeMirror는 shadcn 대상이 아니므로 테마 토큰 연결만 유지합니다. */
 .json-editor .cm-editor { background: var(--card); color: var(--card-foreground); }

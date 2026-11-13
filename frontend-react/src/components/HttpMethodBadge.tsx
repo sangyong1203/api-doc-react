@@ -5,8 +5,8 @@ export function HttpMethodBadge({ method }: { method: string }) {
   // DELETE는 프리셋의 destructive variant로 표현할 수 있습니다.
   return (
     <Badge
-      className={method === 'DELETE' ? 'http-method-badge' : `http-method-badge method-${method.toLowerCase()}`}
-      variant={method === 'DELETE' ? 'destructive' : 'outline'}
+      className={`http-method-badge method-${method.toLowerCase()}`}
+      variant={'outline'}
     >
       {method}
     </Badge>
