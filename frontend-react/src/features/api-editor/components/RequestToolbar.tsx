@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Play, Save, Square } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { HttpMethodBadge } from '@/components/HttpMethodBadge'
-import type { HttpMethod, SampleOutcome, SampleRequest } from '@/features/workspace/types'
+import type { HttpMethod, SampleRequest } from '@/features/workspace/types'
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
 
@@ -16,13 +15,11 @@ type RequestToolbarProps = {
   running: boolean
   onChange: (request: SampleRequest) => void
   onSave: () => void
-  onRun: (outcome: SampleOutcome) => void
+  onRun: () => void
   onCancel: () => void
 }
 
 export function RequestToolbar({ request, dirty, running, onChange, onSave, onRun, onCancel }: RequestToolbarProps) {
-  const [outcome, setOutcome] = useState<SampleOutcome>('success')
-
   return (
     <section className="request-toolbar" aria-label="요청 정보 및 실행">
       <div className="request-heading">
@@ -67,20 +64,12 @@ export function RequestToolbar({ request, dirty, running, onChange, onSave, onRu
           onChange={(event) => onChange({ ...request, url: event.target.value })}
         />
         <div className="request-run-controls">
-          <Select value={outcome} disabled={running} onValueChange={(value) => setOutcome(value as SampleOutcome)}>
-            <SelectTrigger className="text-xs" id="sample-outcome" aria-label="샘플 실행 결과"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="success">성공 응답</SelectItem>
-              <SelectItem value="http-error">HTTP 오류 · 422</SelectItem>
-              <SelectItem value="network-error">통신 오류</SelectItem>
-            </SelectContent>
-          </Select>
           {running ? (
             <Button className="request-send text-xs" variant="outline" onClick={onCancel}>
               <Square aria-hidden="true" />취소
             </Button>
           ) : (
-            <Button className="request-send text-xs" onClick={() => onRun(outcome)} disabled={!request.url.trim()}>
+            <Button className="request-send text-xs" onClick={onRun} disabled={!request.url.trim()}>
               <Play aria-hidden="true" />샘플 실행
             </Button>
           )}

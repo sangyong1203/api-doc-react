@@ -10,7 +10,7 @@ import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
 import { ResponseViewer } from '@/features/request-runner/components/ResponseViewer'
 import { WorkspaceTabs } from '@/features/workspace/components/WorkspaceTabs'
 import { createSampleResponse, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
-import type { RequestField, SampleOutcome, SampleRequest, WorkspaceTab } from '@/features/workspace/types'
+import type { RequestField, SampleRequest, WorkspaceTab } from '@/features/workspace/types'
 import '@/styles/workspace.css'
 
 function createTab(request: SampleRequest): WorkspaceTab {
@@ -69,7 +69,7 @@ export function WorkspacePage() {
   }
 
   // 요청 ID별 타이머를 관리해 탭 전환·취소·닫기 후 다른 탭에 결과가 섞이지 않게 합니다.
-  function runSample(outcome: SampleOutcome) {
+  function runSample() {
     if (!activeTab || timers.current.has(activeTab.request.id)) {
       return
     }
@@ -84,9 +84,9 @@ export function WorkspacePage() {
     updateTab(request.id, (tab) => ({ ...tab, execution: { status: 'running' }, requestSnapshot }))
     const timer = setTimeout(() => {
       timers.current.delete(request.id)
-      updateTab(request.id, (tab) => ({ ...tab, execution: outcome === 'network-error'
-        ? { status: 'error', message: '연결 실패 상황을 재현한 샘플입니다. 실제 네트워크 요청은 전송하지 않았습니다.' }
-        : { status: 'complete', response: createSampleResponse(request.id, request.method, outcome) } }))
+      updateTab(request.id, (tab) => ({ ...tab,
+        execution: { status: 'complete', response: createSampleResponse(request.id, request.method) },
+      }))
     }, 1200)
     timers.current.set(request.id, timer)
   }

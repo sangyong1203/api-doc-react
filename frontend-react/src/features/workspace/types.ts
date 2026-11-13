@@ -7,6 +7,14 @@ export type RequestField = {
   value: string
 }
 
+export type ErrorResponseExample = {
+  id: string
+  name: string
+  status: string
+  description: string
+  fields: RequestField[]
+}
+
 export type SampleRequest = {
   id: string
   name: string
@@ -17,9 +25,8 @@ export type SampleRequest = {
   queryParams: RequestField[]
   headers: RequestField[]
   body: string
+  errorResponses: ErrorResponseExample[]
 }
-
-export type SampleOutcome = 'success' | 'http-error' | 'network-error'
 
 export type SampleResponse = {
   status: number

@@ -106,7 +106,7 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
                     </EmptyTitle>
                     <EmptyDescription>
                       {execution.status === 'running' ? '취소 버튼으로 실행을 중단할 수 있습니다.'
-                        : '샘플 실행을 누르면 선택한 시나리오의 응답을 표시합니다.'}
+                        : '샘플 실행을 누르면 고정된 성공 응답을 표시합니다.'}
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
