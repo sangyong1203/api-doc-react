@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Braces, FolderOpen } from 'lucide-react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -40,6 +41,12 @@ export function WorkspacePage() {
   const [requests, setRequests] = useState(SAMPLE_REQUESTS)
   const [presetsByApi, setPresetsByApi] = useState<Record<string, PayloadPreset[]>>(() => Object.fromEntries(SAMPLE_REQUESTS.map((request) => [request.id, [createInitialPreset(request)]])))
   const [defaultPresets, setDefaultPresets] = useState<Record<string, string | null>>({})
+  const [confirmation, setConfirmation] = useState<{
+    title: string
+    description: string
+    actionLabel: string
+    onConfirm: () => void
+  } | null>(null)
   const [editTarget, setEditTarget] = useState<CollectionDialogTarget | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CollectionDeleteTarget | null>(null)
   const [tabs, setTabs] = useState<WorkspaceTab[]>([createTab(SAMPLE_REQUESTS[0])])
@@ -144,13 +151,16 @@ export function WorkspacePage() {
     setDeleteTarget(null)
   }
 
-  function closeTab(id: string) {
+  function closeTab(id: string, confirmed = false) {
     const target = tabs.find((tab) => tab.request.id === id)
     if (!target) {
       return
     }
     const dirty = JSON.stringify(target.request) !== JSON.stringify(target.saved)
-    if ((dirty || target.execution.status === 'running') && !window.confirm(`${target.request.name}: ${dirty ? '미저장 변경이 사라집니다. ' : ''}${target.execution.status === 'running' ? '실행을 중단합니다. ' : ''}탭을 닫으시겠습니까?`)) {
+    if (!confirmed && (dirty || target.execution.status === 'running')) {
+      setConfirmation({ title: `${target.request.name} 탭 닫기`,
+        description: `${dirty ? '미저장 변경이 사라집니다. ' : ''}${target.execution.status === 'running' ? '실행 중인 요청을 중단합니다. ' : ''}탭을 닫으시겠습니까?`,
+        actionLabel: '탭 닫기', onConfirm: () => closeTab(id, true) })
       return
     }
     clearTimeout(timers.current.get(id))
@@ -163,13 +173,16 @@ export function WorkspacePage() {
     }
   }
 
-  function selectPreset(id: string | null) {
+  function selectPreset(id: string | null, confirmed = false) {
     if (!activeTab || id === activeTab.selectedPresetId) { return }
     const base = requests.find((request) => request.id === activeTab.request.id)
     const preset = (presetsByApi[activeTab.request.id] ?? []).find((item) => item.id === id)
     if (!base || (id && !preset)) { return }
-    if (JSON.stringify(copyPayload(activeTab.request)) !== JSON.stringify(copyPayload(activeTab.saved))
-      && !window.confirm('현재 입력값의 미저장 변경을 버리고 세트를 전환하시겠습니까?')) { return }
+    if (!confirmed && JSON.stringify(copyPayload(activeTab.request)) !== JSON.stringify(copyPayload(activeTab.saved))) {
+      setConfirmation({ title: '입력 세트 전환', description: '현재 입력값의 미저장 변경을 버리고 세트를 전환하시겠습니까?',
+        actionLabel: '변경 버리고 전환', onConfirm: () => selectPreset(id, true) })
+      return
+    }
     const values = copyPayload(preset?.values ?? base)
     updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: id,
       request: { ...tab.request, ...values }, saved: { ...tab.saved, ...copyPayload(values) } }))
@@ -186,7 +199,7 @@ export function WorkspacePage() {
       saved: { ...tab.saved, ...copyPayload(preset.values) } }))
   }
 
-  function deletePreset(id: string) {
+  function deletePreset(id: string, confirmed = false) {
     if (!activeTab) { return }
     const presets = presetsByApi[activeTab.request.id] ?? []
     if (presets.length <= 1) { return }
@@ -194,7 +207,13 @@ export function WorkspacePage() {
     const fallback = remaining.find((item) => item.id === defaultPresets[activeTab.request.id]) ?? remaining[0]
     const target = presets.find((item) => item.id === id)
     const dirty = activeTab.selectedPresetId === id && JSON.stringify(copyPayload(activeTab.request)) !== JSON.stringify(copyPayload(activeTab.saved))
-    if (!target || !window.confirm(`'${target.name}' 입력 세트를 삭제하시겠습니까?${dirty ? ' 현재 입력의 미저장 변경도 사라집니다.' : ''}`)) { return }
+    if (!target) { return }
+    if (!confirmed) {
+      setConfirmation({ title: '입력 세트 삭제',
+        description: `'${target.name}' 입력 세트를 삭제하시겠습니까?${dirty ? ' 현재 입력의 미저장 변경도 사라집니다.' : ''}`,
+        actionLabel: '삭제', onConfirm: () => deletePreset(id, true) })
+      return
+    }
     if (activeTab.selectedPresetId === id) {
       updateTab(activeTab.request.id, (tab) => ({ ...tab, selectedPresetId: fallback.id,
         request: { ...tab.request, ...copyPayload(fallback.values) }, saved: { ...tab.saved, ...copyPayload(fallback.values) } }))
@@ -297,6 +316,16 @@ export function WorkspacePage() {
           )}
         </Tabs>
       </div>
+      <AlertDialog open={Boolean(confirmation)} onOpenChange={(open) => { if (!open) { setConfirmation(null) } }}>
+        <AlertDialogContent className="workspace-confirmation-dialog">
+          <AlertDialogTitle>{confirmation?.title}</AlertDialogTitle>
+          <AlertDialogDescription>{confirmation?.description}</AlertDialogDescription>
+          <div className="confirmation-actions flex justify-end gap-2">
+            <AlertDialogCancel asChild><Button variant="outline">취소</Button></AlertDialogCancel>
+            <AlertDialogAction asChild><Button variant="destructive" onClick={() => confirmation?.onConfirm()}>{confirmation?.actionLabel}</Button></AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
       {editTarget && <CollectionEditDialog target={editTarget} collections={collections} folders={folders} onClose={() => setEditTarget(null)} onSubmit={submitEntity} />}
       <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) { setDeleteTarget(null) } }}>
         <DialogContent className="collection-delete-dialog">
