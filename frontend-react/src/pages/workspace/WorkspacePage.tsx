@@ -9,7 +9,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { CollectionSidebar } from '@/features/collections/components/CollectionSidebar'
 import { CollectionEditDialog } from '@/features/collections/components/CollectionEditDialog'
 import type { CollectionDeleteTarget, CollectionDialogTarget, CollectionFormValues } from '@/features/collections/types'
-import { getRequestBody, validateRequest, withDefaultBodyView } from '@/features/api-editor/requestSchema'
+import { getRequestBody, serializeQuery, validateRequest, withDefaultBodyView } from '@/features/api-editor/requestSchema'
 import { RequestEditor } from '@/features/api-editor/components/RequestEditor'
 import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
 import { PayloadPicker } from '@/features/payload-presets/components/PayloadPicker'
@@ -234,11 +234,13 @@ export function WorkspacePage() {
     if (error) { setRequestError({ id: request.id, message: error }); return }
     setRequestError(null)
     // 실행 이후 편집과 독립적으로 당시 본문·파라미터·헤더를 유지합니다.
+    const query = serializeQuery(request.queryParams, request.schema?.fields)
     const requestSnapshot = {
       bodyFormat: request.bodyFormat ?? 'json',
       body: getRequestBody(request),
       pathParams: copyActiveFields(request.pathParams),
-      queryParams: copyActiveFields(request.queryParams),
+      queryParams: query.fields,
+      queryString: query.queryString,
       headers: copyActiveFields(request.headers),
     }
     updateTab(request.id, (tab) => ({ ...tab, execution: { status: 'running' }, requestSnapshot }))

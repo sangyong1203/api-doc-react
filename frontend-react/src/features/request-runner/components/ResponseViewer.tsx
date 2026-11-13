@@ -61,6 +61,8 @@ export function ResponseViewer({ execution, requestSnapshot }: ResponseViewerPro
                   <section className="exchange-data-section" aria-label="실행 당시 Query params">
                     <h3 className="exchange-data-title">Query params</h3>
                     <pre className="response-code"><code>{formatFields(requestSnapshot.queryParams)}</code></pre>
+                    <h4 className="query-string-title text-xs text-muted-foreground">Query string</h4>
+                    <pre className="response-code whitespace-pre-wrap break-all"><code>{requestSnapshot.queryString ? `?${requestSnapshot.queryString}` : '(없음)'}</code></pre>
                   </section>
                   <section className="exchange-data-section" aria-label="실행 당시 Request Body">
                     <h3 className="exchange-data-title">Request Body{requestSnapshot.bodyFormat === 'multipart' ? ' · Multipart Form' : ''}</h3>

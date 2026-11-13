@@ -1,7 +1,7 @@
 import test from 'node:test'
 import { File } from 'node:buffer'
 import assert from 'node:assert/strict'
-import { addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, createMultipartForm, describeMultipart, withDefaultBodyView, validateRequest, validateMultipart, fieldValueError, importBody, parseFieldValue, serializeBody, validateStructure } from './requestSchema.ts'
+import { addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, createMultipartForm, describeMultipart, withDefaultBodyView, serializeQuery, queryFieldError, validateRequest, validateMultipart, fieldValueError, importBody, parseFieldValue, serializeBody, validateStructure } from './requestSchema.ts'
 import { applyPayload, copyPayload } from '../payload-presets/types.ts'
 
 test('JSON 구조와 0·false·null·배열 루트가 왕복 변환된다', () => {
@@ -170,4 +170,37 @@ test('본문 기본 보기는 필드 편집이며 잘못된 JSON과 명시적 �
   assert.equal(broken.body, '{broken')
   const raw = { body: '{}', bodyView: 'json' }
   assert.equal(withDefaultBodyView(raw), raw)
+})
+
+
+test('Query 배열은 키 반복을 기본으로 순서·중복·0·false를 보존한다', () => {
+  const fields = [
+    { id: 'ids', name: 'ids', value: '[0,2,2]', enabled: true },
+    { id: 'flag', name: 'flag', value: '[false,true]', enabled: true },
+    { id: 'again', name: 'ids', value: '9', enabled: true },
+    { id: 'off', name: 'off', value: 'broken', enabled: false },
+  ]
+  const specs = { ids: { type: 'number array', required: false }, flag: { type: 'boolean array', required: false } }
+  const result = serializeQuery(fields, specs)
+  assert.equal(result.queryString, 'ids=0&ids=2&ids=2&flag=false&flag=true&ids=9')
+  assert.equal(result.fields.length, 6)
+  assert.equal(fields[0].value, '[0,2,2]')
+})
+
+test('Query 쉼표 구분은 원소별 예약문자와 한글을 인코딩한다', () => {
+  const fields = [{ id: 'tags', name: '태그', value: '["A&B","x,y","한 글","a+b"]', enabled: true }]
+  const specs = { tags: { type: 'string array', queryArrayFormat: 'comma', required: false } }
+  const result = serializeQuery(fields, specs)
+  assert.equal(result.queryString, `${encodeURIComponent('태그')}=A%26B,x%2Cy,${encodeURIComponent('한 글')},a%2Bb`)
+  assert.deepEqual(result.fields, [{ name: '태그', value: 'A&B,x,y,한 글,a+b' }])
+})
+
+test('Query 빈 선택 배열은 생략하며 필수 빈 배열과 원소 타입 오류는 거부한다', () => {
+  const field = { id: 'ids', name: 'ids', value: '[]', enabled: true }
+  const optional = { type: 'number array', required: false }
+  assert.equal(serializeQuery([field], { ids: optional }).queryString, '')
+  assert.equal(serializeQuery([{ ...field, value: '' }], { ids: optional }).queryString, '')
+  assert.ok(queryFieldError('[]', { ...optional, required: true }))
+  assert.throws(() => serializeQuery([{ ...field, value: '[1,"bad"]' }], { ids: optional }))
+  assert.throws(() => serializeQuery([{ ...field, name: '' }], { ids: optional }))
 })

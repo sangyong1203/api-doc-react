@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { BodyEditor } from './BodyEditor'
-import { DEFAULT_SPEC, fieldValueError } from '../requestSchema'
+import { DEFAULT_SPEC, QUERY_FIELD_TYPES, arrayPlaceholder, isQueryArray, queryFieldError, fieldValueError } from '../requestSchema'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -23,13 +23,14 @@ type RequestFieldsProps = {
   fields: RequestField[]
   specs?: Record<string, FieldSpec>
   path?: boolean
+  query?: boolean
   onSpecChange?: (id: string, spec: FieldSpec) => void
   label: string
   onAdd?: () => void
   onChange: (fields: RequestField[]) => void
 }
 
-function RequestFields({ fields, specs = {}, path = false, onSpecChange, label, onAdd, onChange }: RequestFieldsProps) {
+function RequestFields({ fields, specs = {}, path = false, query = false, onSpecChange, label, onAdd, onChange }: RequestFieldsProps) {
   function updateField(fieldId: string, patch: Partial<RequestField>) {
     onChange(fields.map((field) => field.id === fieldId ? { ...field, ...patch } : field))
   }
@@ -44,13 +45,13 @@ function RequestFields({ fields, specs = {}, path = false, onSpecChange, label, 
         </div>
       )}
       <div className="fields-table-frame overflow-hidden">
-        <Table className={onSpecChange ? "fields-table min-w-[900px] [&_input]:bg-transparent!" : "fields-table [&_input]:bg-transparent!"} aria-label={label}>
+        <Table className={onSpecChange ? `fields-table ${query ? 'min-w-[1080px]' : 'min-w-[900px]'} [&_input]:bg-transparent!` : "fields-table [&_input]:bg-transparent!"} aria-label={label}>
           <TableHeader className="fields-table-header bg-muted/50">
             <TableRow>
               <TableHead className="field-action-cell"><span className="sr-only">사용</span></TableHead>
               <TableHead>키</TableHead>
               {onSpecChange && <><TableHead className="w-12 text-center">필수</TableHead><TableHead className="w-44">타입</TableHead></>}
-              <TableHead>값</TableHead>
+              <TableHead className={query ? 'w-[40%]' : undefined}>값</TableHead>
               {onSpecChange && <TableHead>설명</TableHead>}
               <TableHead className="field-action-cell"><span className="sr-only">삭제</span></TableHead>
             </TableRow>
@@ -58,7 +59,7 @@ function RequestFields({ fields, specs = {}, path = false, onSpecChange, label, 
           <TableBody>
             {fields.map((field, index) => {
               const spec = { ...(specs[field.id] ?? DEFAULT_SPEC), ...(path ? { required: true } : {}) }
-              const error = field.enabled ? fieldValueError(field.value, spec) : null
+              const error = field.enabled ? (query ? queryFieldError(field.value, spec) : fieldValueError(field.value, spec)) : null
               return (
               <TableRow key={field.id}>
                 <TableCell>
@@ -80,17 +81,23 @@ function RequestFields({ fields, specs = {}, path = false, onSpecChange, label, 
                 </TableCell>
                 {onSpecChange && <>
                   <TableCell className="required-cell px-0! text-center"><div className="required-checkbox flex w-full items-center justify-center"><Checkbox aria-label={`${label} ${index + 1}행 필수`} checked={spec.required} disabled={path} onCheckedChange={(checked) => onSpecChange(field.id, { ...spec, required: checked === true })} /></div></TableCell>
-                  <TableCell><Select value={spec.type} onValueChange={(type) => onSpecChange(field.id, { ...spec, type: type as FieldSpec['type'] })}><SelectTrigger className="field-type-select w-40 min-w-40 max-w-40 bg-transparent! hover:bg-transparent!" aria-label={`${label} ${index + 1}행 타입`}><SelectValue /></SelectTrigger><SelectContent>{(['string', 'number', 'boolean'] as const).map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></TableCell>
+                  <TableCell><Select value={spec.type} onValueChange={(type) => onSpecChange(field.id, { ...spec, type: type as FieldSpec['type'] })}><SelectTrigger className="field-type-select w-40 min-w-40 max-w-40 bg-transparent! hover:bg-transparent!" aria-label={`${label} ${index + 1}행 타입`}><SelectValue /></SelectTrigger><SelectContent>{(query ? QUERY_FIELD_TYPES : ['string', 'number', 'boolean']).map((type) => <SelectItem key={type} value={type}>{type.endsWith(' array') ? `array (${type.split(' ')[0]})` : type}</SelectItem>)}</SelectContent></Select></TableCell>
                 </>}
                 <TableCell>
+                  <div className="field-value-controls flex min-w-0 items-center gap-2">
                   <Input
                     className="field-input"
                     aria-invalid={Boolean(error)}
                     aria-label={`${label} ${index + 1}행 값`}
-                    placeholder="Value"
+                    placeholder={query ? arrayPlaceholder(spec.type) ?? 'Value' : 'Value'}
                     value={field.value}
                     onChange={(event) => updateField(field.id, { value: event.target.value })}
                   />
+                {query && onSpecChange && isQueryArray(spec.type) && <Select value={spec.queryArrayFormat ?? 'repeat'} onValueChange={(format) => onSpecChange(field.id, { ...spec, queryArrayFormat: format as 'repeat' | 'comma' })}>
+                  <SelectTrigger className="query-array-format w-32 shrink-0 bg-transparent! hover:bg-transparent!" aria-label={`${label} ${index + 1}행 전송 방식`}><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="repeat">키 반복</SelectItem><SelectItem value="comma">쉼표 구분</SelectItem></SelectContent>
+                </Select>}
+                  </div>
                   {error && <span className="field-value-error block whitespace-normal text-xs text-error" role="status">{error}</span>}
                 </TableCell>
                 {onSpecChange && <TableCell><Input aria-label={`${label} ${index + 1}행 설명`} value={spec.description} onChange={(event) => onSpecChange(field.id, { ...spec, description: event.target.value })} /></TableCell>}
@@ -242,7 +249,12 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
     { value: 'errors', label: '오류 응답', hasData: request.errorResponses.length > 0 },
   ]
   function changeSpec(id: string, spec: FieldSpec) {
-    onChange({ ...request, schema: { body: request.schema?.body ?? [], fields: { ...request.schema?.fields, [id]: spec } } })
+    const typeChanged = (request.schema?.fields[id]?.type ?? DEFAULT_SPEC.type) !== spec.type
+    const clearValue = (fields: RequestField[]) => fields.map((field) => typeChanged && field.id === id ? { ...field, value: '' } : field)
+    onChange({ ...request,
+      pathParams: clearValue(request.pathParams), queryParams: clearValue(request.queryParams), headers: clearValue(request.headers),
+      schema: { body: request.schema?.body ?? [], fields: { ...request.schema?.fields, [id]: spec } },
+    })
   }
 
   return (
@@ -306,7 +318,7 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
               <RequestFields fields={request.pathParams} specs={request.schema?.fields} path onSpecChange={changeSpec} label="Path params" onChange={(pathParams) => onChange({ ...request, pathParams })} />
             </TabsContent>
             <TabsContent className="request-section-content" value="query">
-              <RequestFields fields={request.queryParams} specs={request.schema?.fields} onSpecChange={changeSpec} label="Query params" onChange={(queryParams) => onChange({ ...request, queryParams })} />
+              <RequestFields fields={request.queryParams} query specs={request.schema?.fields} onSpecChange={changeSpec} label="Query params" onChange={(queryParams) => onChange({ ...request, queryParams })} />
             </TabsContent>
             <TabsContent className="request-section-content" value="headers">
               <RequestFields fields={request.headers} specs={request.schema?.fields} onSpecChange={changeSpec} label="Request headers" onChange={(headers) => onChange({ ...request, headers })} />

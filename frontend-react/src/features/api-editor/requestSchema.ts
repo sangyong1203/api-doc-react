@@ -1,4 +1,4 @@
-import type { BodyField, FieldSpec, FieldType, SampleRequest } from '@/features/workspace/types'
+import type { BodyField, FieldSpec, FieldType, RequestField, SampleRequest } from '@/features/workspace/types'
 
 export const FIELD_TYPES: FieldType[] = ['string', 'number', 'boolean', 'object', 'string array', 'number array', 'boolean array', 'object array', 'null']
 export function hasChildFields(type: FieldType): boolean {
@@ -37,6 +37,50 @@ export function fieldValueError(value: string, spec: FieldSpec): string | null {
   if (spec.required && !value.trim()) { return '필수값을 입력하세요.' }
   if (!value.trim() && !spec.required) { return null }
   try { parseFieldValue(value, spec.type); return null } catch { return spec.type === 'boolean' ? 'true 또는 false를 입력하세요.' : spec.type === 'number' ? '유효한 숫자를 입력하세요.' : '값 형식을 확인하세요.' }
+}
+
+export const QUERY_FIELD_TYPES: FieldType[] = ['string', 'number', 'boolean', 'string array', 'number array', 'boolean array']
+
+export function isQueryArray(type: FieldType): boolean {
+  return type === 'string array' || type === 'number array' || type === 'boolean array'
+}
+
+export function queryFieldError(value: string, spec: FieldSpec): string | null {
+  const error = fieldValueError(value, spec)
+  if (error) { return error }
+  if (spec.required && isQueryArray(spec.type)) {
+    const items = parseFieldValue(value, spec.type) as unknown[]
+    if (!items.length) { return '필수 배열에는 값을 하나 이상 입력하세요.' }
+  }
+  return null
+}
+
+// Query는 활성 행의 순서와 중복 키를 보존합니다. 빈 선택 배열은 생략하고 인코딩은 정확히 한 번 적용합니다.
+export function serializeQuery(fields: RequestField[], specs: Record<string, FieldSpec> = {}) {
+  const result: Array<Pick<RequestField, 'name' | 'value'>> = []
+  const parts: string[] = []
+  for (const field of fields) {
+    if (!field.enabled) { continue }
+    if (!field.name.trim()) { throw new Error('사용 중인 Query 행의 키를 입력하세요.') }
+    const spec = specs[field.id] ?? DEFAULT_SPEC
+    const error = queryFieldError(field.value, spec)
+    if (error) { throw new Error(`${field.name}: ${error}`) }
+    const key = encodeURIComponent(field.name)
+    if (isQueryArray(spec.type)) {
+      const items = (parseFieldValue(field.value, spec.type) as (string | number | boolean)[]).map(String)
+      if (!items.length) { continue }
+      if (spec.queryArrayFormat === 'comma') {
+        result.push({ name: field.name, value: items.join(',') })
+        parts.push(`${key}=${items.map(encodeURIComponent).join(',')}`)
+      } else {
+        for (const value of items) { result.push({ name: field.name, value }); parts.push(`${key}=${encodeURIComponent(value)}`) }
+      }
+    } else {
+      result.push({ name: field.name, value: field.value })
+      parts.push(`${key}=${encodeURIComponent(field.value)}`)
+    }
+  }
+  return { fields: result, queryString: parts.join('&') }
 }
 
 // JSON 원문을 구조 편집용으로 변환합니다. 같은 경로의 명세 ID·설명·필수 설정은 유지합니다.
@@ -221,7 +265,7 @@ export function validateRequest(request: SampleRequest): string | null {
       if (key === 'pathParams' && (!field.enabled || !field.value.trim())) { return 'Path params의 이름과 필수값을 확인하세요.' }
       if (!field.enabled) { continue }
       if (!field.name.trim()) { return '사용 중인 행의 키를 입력하세요.' }
-      const error = fieldValueError(field.value, spec)
+      const error = key === 'queryParams' ? queryFieldError(field.value, spec) : fieldValueError(field.value, spec)
       if (error) { return `${field.name}: ${error}` }
     }
   }

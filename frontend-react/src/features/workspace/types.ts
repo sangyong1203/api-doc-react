@@ -11,7 +11,7 @@ export type RequestField = {
 }
 
 export type FieldType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'string array' | 'number array' | 'boolean array' | 'object array' | 'null' | 'file'
-export type FieldSpec = { required: boolean; type: FieldType; description: string }
+export type FieldSpec = { required: boolean; type: FieldType; description: string; queryArrayFormat?: 'repeat' | 'comma' }
 export type BodyField = FieldSpec & { id: string; parentId: string | null; name: string }
 export type RequestSchema = {
   fields: Record<string, FieldSpec>
@@ -63,6 +63,7 @@ export type ExecutionState =
   | { status: 'complete'; response: SampleResponse }
 
 export type RequestSnapshot = {
+  queryString?: string
   bodyFormat?: 'json' | 'multipart'
   body: string
   pathParams: Array<Pick<RequestField, 'name' | 'value'>>
