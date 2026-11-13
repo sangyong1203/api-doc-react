@@ -214,6 +214,13 @@ export function RequestEditor({ request, onChange }: RequestEditorProps) {
       id: crypto.randomUUID(), name: '', status: '400', description: '', fields: [],
     }] })
   }
+  const sections = [
+    { value: 'path', label: 'Path params', hasData: request.pathParams.some((field) => field.enabled && field.name.trim()) },
+    { value: 'query', label: 'Query params', hasData: request.queryParams.some((field) => field.enabled && field.name.trim()) },
+    { value: 'body', label: 'Body params', hasData: Boolean(request.body.trim()) },
+    { value: 'headers', label: 'Headers', hasData: request.headers.some((field) => field.enabled && field.name.trim()) },
+    { value: 'errors', label: '오류 응답', hasData: request.errorResponses.length > 0 },
+  ]
   let jsonError = false
   if (request.body.trim()) {
     try {
@@ -245,19 +252,17 @@ export function RequestEditor({ request, onChange }: RequestEditorProps) {
                 )}
                 <div className="request-tab-list-scroll" id={tabViewportId} ref={tabViewportRef}>
                   <TabsList aria-label="요청 입력 항목" ref={tabListRef}>
-                    <TabsTrigger value="path">
-                      Path params<Badge variant="secondary">{request.pathParams.filter((field) => field.enabled && field.name.trim()).length}</Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="query">
-                      Query params<Badge variant="secondary">{request.queryParams.filter((field) => field.enabled && field.name.trim()).length}</Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="body">Body params</TabsTrigger>
-                    <TabsTrigger value="headers">
-                      Headers<Badge variant="secondary">{request.headers.filter((field) => field.enabled && field.name.trim()).length}</Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="errors">
-                      오류 응답<Badge variant="secondary">{request.errorResponses.length}</Badge>
-                    </TabsTrigger>
+                    {sections.map((item) => (
+                      <TabsTrigger className="request-section-trigger data-active:border-transparent! data-active:bg-primary! data-active:shadow-none!" key={item.value} value={item.value}>
+                        <span className="request-section-label relative">
+                          {item.label}
+                          {item.hasData && (
+                            <span className="request-section-indicator absolute -top-0.3 -right-1 size-1 rounded-full bg-primary" aria-hidden="true" />
+                          )}
+                        </span>
+                        {item.hasData && <span className="sr-only">데이터 설정됨</span>}
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
                 </div>
                 {tabScroll.overflowing && (
