@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -232,19 +231,19 @@ export function RequestEditor({ request, onChange }: RequestEditorProps) {
             <TabsContent className="request-section-content" value="headers">
               <RequestFields fields={request.headers} label="Request headers" onChange={(headers) => onChange({ ...request, headers })} />
             </TabsContent>
-            <TabsContent className="request-section-content" value="body">
-              <div className="body-heading"><Badge variant="outline">JSON</Badge></div>
-              <Suspense fallback={<p className="editor-loading" role="status">편집기 준비 중…</p>}>
-                <JsonEditor initialValue={request.body} label="요청 JSON 본문" onChange={(body) => onChange({ ...request, body })} />
-              </Suspense>
-              {jsonError && (
-                <Alert className="body-warning" variant="error" role="status">
-                  <AlertDescription>올바른 JSON 형식이 아닙니다.</AlertDescription>
-                </Alert>
-              )}
-              {(request.method === 'GET' || request.method === 'HEAD') && (
-                <p className="body-hint">GET·HEAD 본문의 실제 전송 정책은 API 호출 구현 단계에서 확정합니다.</p>
-              )}
+            <TabsContent className="request-section-content request-body-content" value="body">
+              <div className="body-heading">
+                <Badge variant="outline">JSON</Badge>
+                {jsonError && <span className="body-warning text-sm text-error" role="status">올바른 JSON 형식이 아닙니다.</span>}
+              </div>
+              <div className="request-body-scroll">
+                <Suspense fallback={<p className="editor-loading" role="status">편집기 준비 중…</p>}>
+                  <JsonEditor initialValue={request.body} label="요청 JSON 본문" onChange={(body) => onChange({ ...request, body })} />
+                </Suspense>
+                {(request.method === 'GET' || request.method === 'HEAD') && (
+                  <p className="body-hint">GET·HEAD 본문의 실제 전송 정책은 API 호출 구현 단계에서 확정합니다.</p>
+                )}
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>

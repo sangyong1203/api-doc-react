@@ -43,10 +43,13 @@
 .url-input { flex: 1; min-width: 0; }
 .request-section-content { min-height: 0; overflow: auto; padding-top: 4px; }
 .fields-heading, .body-heading { margin-bottom: 4px; }
+.body-heading { justify-content: flex-start; flex-shrink: 0; flex-wrap: wrap; }
+.request-body-content[data-state="active"] { display: flex; flex-direction: column; overflow: hidden; }
+.request-body-scroll { flex: 1; min-height: 0; overflow: auto; }
 .fields-table { min-width: 420px; table-layout: fixed; }
 .field-action-cell { width: 48px; }
 .field-input { width: 100%; min-width: 0; }
-.body-warning, .body-hint { margin-top: 12px; }
+.body-hint { margin-top: 12px; }
 .response-viewer { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .response-heading { flex-wrap: wrap; }
 .response-metrics { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
