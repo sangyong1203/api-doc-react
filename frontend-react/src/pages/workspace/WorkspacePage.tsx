@@ -3,7 +3,6 @@ import { Braces, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { CollectionSidebar } from '@/features/collections/components/CollectionSidebar'
@@ -13,6 +12,7 @@ import { RequestEditor } from '@/features/api-editor/components/RequestEditor'
 import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
 import { ResponseViewer } from '@/features/request-runner/components/ResponseViewer'
 import { WorkspaceTabs } from '@/features/workspace/components/WorkspaceTabs'
+import { EnvironmentPicker } from '@/features/environments/components/EnvironmentPicker'
 import { createSampleResponse, SAMPLE_COLLECTIONS, SAMPLE_FOLDERS, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
 import type { RequestField, SampleRequest, WorkspaceTab } from '@/features/workspace/types'
 import '@/styles/workspace.css'
@@ -35,7 +35,6 @@ export function WorkspacePage() {
   const [deleteTarget, setDeleteTarget] = useState<CollectionDeleteTarget | null>(null)
   const [tabs, setTabs] = useState<WorkspaceTab[]>([createTab(SAMPLE_REQUESTS[0])])
   const [activeId, setActiveId] = useState<string | null>(SAMPLE_REQUESTS[0].id)
-  const [environment, setEnvironment] = useState('local')
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const activeTab = tabs.find((tab) => tab.request.id === activeId)
   const deleteRequests = deleteTarget ? requests.filter((request) => deleteTarget.kind === 'collection'
@@ -188,15 +187,7 @@ export function WorkspacePage() {
         <div className="workspace-brand"><Braces aria-hidden="true" />API Doc</div>
         <Separator orientation="vertical" className="header-divider" />
         <div className="workspace-name"><FolderOpen aria-hidden="true" /><span>Robot workspace</span></div>
-        <div className="environment-picker">
-          <Select value={environment} onValueChange={setEnvironment}>
-            <SelectTrigger size="sm" id="workspace-environment" aria-label="환경"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="local">Local</SelectItem>
-              <SelectItem value="dev">Development</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <EnvironmentPicker />
       </header>
       <Separator />
       <div className="workspace-body">
