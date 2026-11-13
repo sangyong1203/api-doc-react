@@ -40,7 +40,7 @@ export function RequestToolbar({ request, collectionName, folderName, dirty, run
           </Breadcrumb>
         </div>
         <div className="request-save-controls">
-          {dirty && <Badge variant="secondary">미저장</Badge>}
+          {dirty && <Badge variant="warning">미저장</Badge>}
           <Button className="request-save text-xs" variant="outline" size="sm" disabled={!dirty} onClick={onSave}>
             <Save aria-hidden="true" />저장
           </Button>

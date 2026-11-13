@@ -90,7 +90,7 @@ export function WorkspaceTabs({ tabs, onClose }: WorkspaceTabsProps) {
               <div className="workspace-tab" key={request.id}>
                 <TabsTrigger className="workspace-tab-select" value={request.id}>
                   {request.name}
-                  {dirty && <Badge variant="secondary">미저장</Badge>}
+                  {dirty && <Badge variant="warning">미저장</Badge>}
                   {execution.status === 'running' && (
                     <LoaderCircle className="motion-safe:animate-spin" aria-label="실행 중" />
                   )}
