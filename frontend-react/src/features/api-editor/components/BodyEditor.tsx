@@ -13,9 +13,9 @@ import type { BodyField, FieldType, SampleRequest } from '@/features/workspace/t
 import { FIELD_TYPES, addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, getRequestBody, importBody, serializeBody, validateStructure } from '../requestSchema'
 
 const JsonEditor = lazy(() => import('./JsonEditor').then((module) => ({ default: module.JsonEditor })))
-type Props = { request: SampleRequest; onChange: (request: SampleRequest) => void; schemaOnly?: boolean }
+type Props = { request: SampleRequest; onChange: (request: SampleRequest) => void; schemaOnly?: boolean; hideToolbar?: boolean }
 
-export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
+export function BodyEditor({ request, onChange, schemaOnly = false, hideToolbar = false }: Props) {
   const [error, setError] = useState('')
   const [collapsed, setCollapsed] = useState<string[]>([])
   const [deleting, setDeleting] = useState<string[] | null>(null)
@@ -95,9 +95,9 @@ export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
   }
   if (root && rootContainer) { visit(root.id, 0) } else { visit(null, 0) }
 
-  return <ViewTabs variant="button" className="body-editor flex min-h-0 flex-1 flex-col gap-2" value={view} onValueChange={(next) => changeView(next as 'fields' | 'json')}
+  return <ViewTabs variant="button" className={`body-editor flex min-h-0 flex-1 flex-col gap-2 ${hideToolbar ? '[&>.view-tabs-heading]:hidden' : ''}`} value={view} onValueChange={(next) => changeView(next as 'fields' | 'json')}
     label="본문 편집 방식" items={!schemaOnly && request.bodyFormat !== 'multipart' ? [{ value: 'fields', label: '필드 편집' }, { value: 'json', label: 'JSON' }] : []}
-    toolbar={<>
+    toolbar={hideToolbar ? undefined : <>
         {!schemaOnly && <Select value={request.bodyFormat ?? 'json'} onValueChange={(format) => { setError(''); onChange({ ...request, bodyFormat: format as 'json' | 'multipart' }) }}>
           <SelectTrigger className="body-format-select w-40" aria-label="본문 형식"><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem value="json">JSON</SelectItem><SelectItem value="multipart">Multipart Form</SelectItem></SelectContent>

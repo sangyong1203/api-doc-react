@@ -6,12 +6,12 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { ViewTabs } from '@/components/ViewTabs'
 import { BodyEditor } from './BodyEditor'
-import { DEFAULT_SPEC, QUERY_FIELD_TYPES, arrayPlaceholder, isQueryArray, queryFieldError, fieldValueError } from '../requestSchema'
+import { DEFAULT_SPEC, QUERY_FIELD_TYPES, addBodyField, hasChildFields, arrayPlaceholder, isQueryArray, queryFieldError, fieldValueError } from '../requestSchema'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { ErrorResponseExample, FieldSpec, RequestField, SampleRequest } from '@/features/workspace/types'
+import type { BodyField, ErrorResponseExample, FieldSpec, RequestField, SampleRequest } from '@/features/workspace/types'
 
 
 type RequestEditorProps = {
@@ -175,6 +175,8 @@ function ErrorResponseCard({ response, index, onChange, onDelete }: ErrorRespons
 export function RequestEditor({ request, onChange, payloadPicker, documentationEditor }: RequestEditorProps) {
   const [section, setSection] = useState('query')
   const [responseSection, setResponseSection] = useState('success')
+  const responseFields: BodyField[] = request.responseFields ?? [{ id: 'response-root', parentId: null, name: '$', type: 'object', required: false, description: '' }]
+  const responseRoot = responseFields.find((field) => field.parentId === null)
   const [tabScroll, setTabScroll] = useState({ overflowing: false, canScrollLeft: false, canScrollRight: false })
   const tabNavigationRef = useRef<HTMLDivElement>(null)
   const tabViewportRef = useRef<HTMLDivElement>(null)
@@ -244,6 +246,11 @@ export function RequestEditor({ request, onChange, payloadPicker, documentationE
       id: crypto.randomUUID(), name: '', status: '400', description: '', fields: [],
     }] })
   }
+  function addResponseField() {
+    if (!responseRoot) { return }
+    const changed = addBodyField(responseFields, {}, responseRoot)
+    onChange({ ...request, responseFields: changed.fields })
+  }
   const sections = [
     { value: 'path', label: 'Path', hasData: request.pathParams.some((field) => field.enabled && field.name.trim()) },
     { value: 'query', label: 'Query', hasData: request.queryParams.some((field) => field.enabled && field.name.trim()) },
@@ -311,11 +318,6 @@ export function RequestEditor({ request, onChange, payloadPicker, documentationE
                 )}
               </div>
               {section !== 'documentation' && payloadPicker}
-              {section === 'headers' && (
-                <Button className="request-add-field" variant="ghost" size="sm" onClick={addField}>
-                  <Plus aria-hidden="true" />행 추가
-                </Button>
-              )}
             </div>
             <Separator className="request-section-divider" />
             <TabsContent className="request-section-content" value="path">
@@ -325,14 +327,16 @@ export function RequestEditor({ request, onChange, payloadPicker, documentationE
               <RequestFields fields={request.queryParams} query specs={request.schema?.fields} onSpecChange={changeSpec} label="Query params" onAdd={addField} addLabel="필드 추가" onChange={(queryParams) => onChange({ ...request, queryParams })} />
             </TabsContent>
             <TabsContent className="request-section-content" value="headers">
-              <RequestFields fields={request.headers} specs={request.schema?.fields} onSpecChange={changeSpec} label="Request headers" onChange={(headers) => onChange({ ...request, headers })} />
+              <RequestFields fields={request.headers} specs={request.schema?.fields} onSpecChange={changeSpec} label="Request headers" onAdd={addField} addLabel="필드 추가" onChange={(headers) => onChange({ ...request, headers })} />
             </TabsContent>
             <TabsContent className="request-section-content request-body-content" value="response">
               <ViewTabs value={responseSection} onValueChange={setResponseSection} variant="button" label="응답 유형" className="response-definition-tabs min-h-0 flex-1"
                 items={[{ value: 'success', label: 'Success' }, { value: 'error', label: 'Error' }]}
-                toolbar={responseSection === 'error' ? <Button className="response-add-example" variant="ghost" size="sm" onClick={addErrorResponse}><Plus aria-hidden="true" />오류 응답 추가</Button> : undefined}>
+                toolbar={responseSection === 'error'
+                  ? <Button className="response-add-example" variant="ghost" size="sm" onClick={addErrorResponse}><Plus aria-hidden="true" />오류 응답 추가</Button>
+                  : responseRoot && hasChildFields(responseRoot.type) && <Button className="response-add-field" variant="ghost" size="sm" onClick={addResponseField}><Plus aria-hidden="true" />{responseRoot.type === 'array' ? '항목 추가' : '필드 추가'}</Button>}>
                 <TabsContent value="success" className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <BodyEditor schemaOnly request={{ ...request, schema: { fields: {}, body: request.responseFields ?? [{ id: 'response-root', parentId: null, name: '$', type: 'object', required: false, description: '' }] } }}
+                  <BodyEditor schemaOnly hideToolbar request={{ ...request, schema: { fields: {}, body: responseFields } }}
                     onChange={(next) => onChange({ ...request, responseFields: next.schema?.body })} />
                 </TabsContent>
                 <TabsContent value="error" className="error-responses-content min-h-0 overflow-auto">
