@@ -45,8 +45,8 @@ export function createApiDocumentSheet(request: SampleRequest): ExcelSheet {
   parameterTable('Request · Query params', 'queryParams')
   if (request.bodyFormat === 'multipart') { parameterTable('Request · Multipart Form', 'multipartFields') }
   else { bodyTable('Request · Body', request.schema?.body ?? []) }
-  bodyTable('Response', request.responseFields ?? [])
-  for (const [title, example] of [['Request Example', request.documentation?.requestExample], ['Response Example', request.documentation?.responseExample]]) {
+  bodyTable('Response · Success', request.responseFields ?? [])
+  for (const [title, example] of [['Request Example', request.documentation?.requestExample], ['Response Example · Success', request.documentation?.responseExample]]) {
     section(title ?? '')
     const text = example ?? ''
     // 예시 전체를 한 행의 병합 셀에 담고, Excel의 행 높이 상한 안에서 줄 수에 맞춥니다.
@@ -55,6 +55,7 @@ export function createApiDocumentSheet(request: SampleRequest): ExcelSheet {
       style: { ...cellStyle, verticalAlign: 'top', height: Math.min(546, Math.max(80, text.split('\n').length * 16 + 12)) },
     }])
   }
+  if (request.errorResponses.length > 0) { section('Response · Error') }
   for (const example of request.errorResponses) {
     section(`${example.status} · ${example.name || '오류 응답'}`)
     info('설명', example.description)

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { ViewTabs } from '@/components/ViewTabs'
 import { BodyEditor } from './BodyEditor'
 import { DEFAULT_SPEC, QUERY_FIELD_TYPES, arrayPlaceholder, isQueryArray, queryFieldError, fieldValueError } from '../requestSchema'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -28,10 +29,11 @@ type RequestFieldsProps = {
   onSpecChange?: (id: string, spec: FieldSpec) => void
   label: string
   onAdd?: () => void
+  addLabel?: string
   onChange: (fields: RequestField[]) => void
 }
 
-function RequestFields({ fields, specs = {}, path = false, query = false, onSpecChange, label, onAdd, onChange }: RequestFieldsProps) {
+function RequestFields({ fields, specs = {}, path = false, query = false, onSpecChange, label, onAdd, addLabel = '키·값 추가', onChange }: RequestFieldsProps) {
   function updateField(fieldId: string, patch: Partial<RequestField>) {
     onChange(fields.map((field) => field.id === fieldId ? { ...field, ...patch } : field))
   }
@@ -41,7 +43,7 @@ function RequestFields({ fields, specs = {}, path = false, query = false, onSpec
       {onAdd && (
         <div className="response-field-actions mb-1 flex justify-end">
           <Button className="response-add-field" variant="ghost" size="sm" onClick={onAdd}>
-            <Plus aria-hidden="true" />키·값 추가
+            <Plus aria-hidden="true" />{addLabel}
           </Button>
         </div>
       )}
@@ -172,6 +174,7 @@ function ErrorResponseCard({ response, index, onChange, onDelete }: ErrorRespons
 
 export function RequestEditor({ request, onChange, payloadPicker, documentationEditor }: RequestEditorProps) {
   const [section, setSection] = useState('query')
+  const [responseSection, setResponseSection] = useState('success')
   const [tabScroll, setTabScroll] = useState({ overflowing: false, canScrollLeft: false, canScrollRight: false })
   const tabNavigationRef = useRef<HTMLDivElement>(null)
   const tabViewportRef = useRef<HTMLDivElement>(null)
@@ -226,7 +229,7 @@ export function RequestEditor({ request, onChange, payloadPicker, documentationE
   }
 
   function addField() {
-    if (section === 'body' || section === 'errors' || section === 'response' || section === 'documentation') {
+    if (section === 'body' || section === 'response' || section === 'documentation') {
       return
     }
     const fieldKey = section === 'path' ? 'pathParams' : section === 'query' ? 'queryParams' : 'headers'
@@ -242,12 +245,11 @@ export function RequestEditor({ request, onChange, payloadPicker, documentationE
     }] })
   }
   const sections = [
-    { value: 'path', label: 'Path params', hasData: request.pathParams.some((field) => field.enabled && field.name.trim()) },
-    { value: 'query', label: 'Query params', hasData: request.queryParams.some((field) => field.enabled && field.name.trim()) },
-    { value: 'body', label: 'Body params', hasData: request.bodyFormat === 'multipart' ? Boolean(request.multipartFields?.some((field) => field.enabled && field.name.trim())) : Boolean(request.body.trim()) || Boolean(request.schema?.body.length) },
+    { value: 'path', label: 'Path', hasData: request.pathParams.some((field) => field.enabled && field.name.trim()) },
+    { value: 'query', label: 'Query', hasData: request.queryParams.some((field) => field.enabled && field.name.trim()) },
+    { value: 'body', label: 'Body', hasData: request.bodyFormat === 'multipart' ? Boolean(request.multipartFields?.some((field) => field.enabled && field.name.trim())) : Boolean(request.body.trim()) || Boolean(request.schema?.body.length) },
     { value: 'headers', label: 'Headers', hasData: request.headers.some((field) => field.enabled && field.name.trim()) },
-    { value: 'response', label: '응답 명세', hasData: Boolean(request.responseFields?.length) },
-    { value: 'errors', label: '오류 응답', hasData: request.errorResponses.length > 0 },
+    { value: 'response', label: 'Response', hasData: Boolean(request.responseFields?.length) || request.errorResponses.length > 0 },
     { value: 'documentation', label: '문서', hasData: Boolean(request.documentation && Object.values(request.documentation).some((value) => value.trim())) },
   ]
   function changeSpec(id: string, spec: FieldSpec) {
@@ -309,37 +311,43 @@ export function RequestEditor({ request, onChange, payloadPicker, documentationE
                 )}
               </div>
               {section !== 'documentation' && payloadPicker}
-              {section !== 'body' && section !== 'response' && section !== 'documentation' && (
-                <Button className="request-add-field" variant="ghost" size="sm" onClick={section === 'errors' ? addErrorResponse : addField}>
-                  <Plus aria-hidden="true" />{section === 'errors' ? '오류 응답 추가' : '행 추가'}
+              {section === 'headers' && (
+                <Button className="request-add-field" variant="ghost" size="sm" onClick={addField}>
+                  <Plus aria-hidden="true" />행 추가
                 </Button>
               )}
             </div>
             <Separator className="request-section-divider" />
             <TabsContent className="request-section-content" value="path">
-              <RequestFields fields={request.pathParams} specs={request.schema?.fields} path onSpecChange={changeSpec} label="Path params" onChange={(pathParams) => onChange({ ...request, pathParams })} />
+              <RequestFields fields={request.pathParams} specs={request.schema?.fields} path onSpecChange={changeSpec} label="Path params" onAdd={addField} addLabel="필드 추가" onChange={(pathParams) => onChange({ ...request, pathParams })} />
             </TabsContent>
             <TabsContent className="request-section-content" value="query">
-              <RequestFields fields={request.queryParams} query specs={request.schema?.fields} onSpecChange={changeSpec} label="Query params" onChange={(queryParams) => onChange({ ...request, queryParams })} />
+              <RequestFields fields={request.queryParams} query specs={request.schema?.fields} onSpecChange={changeSpec} label="Query params" onAdd={addField} addLabel="필드 추가" onChange={(queryParams) => onChange({ ...request, queryParams })} />
             </TabsContent>
             <TabsContent className="request-section-content" value="headers">
               <RequestFields fields={request.headers} specs={request.schema?.fields} onSpecChange={changeSpec} label="Request headers" onChange={(headers) => onChange({ ...request, headers })} />
             </TabsContent>
-            <TabsContent className="request-section-content error-responses-content" value="errors">
-              <div className="error-response-list flex flex-col gap-3 p-1">
-                {request.errorResponses.length === 0 && (
-                  <p className="error-responses-empty py-6 text-center text-sm text-muted-foreground">등록된 오류 응답이 없습니다. 오류 응답을 추가하세요.</p>
-                )}
-                {request.errorResponses.map((response, index) => (
-                  <ErrorResponseCard key={response.id} response={response} index={index}
-                    onChange={(updated) => onChange({ ...request, errorResponses: request.errorResponses.map((item) => item.id === updated.id ? updated : item) })}
-                    onDelete={() => onChange({ ...request, errorResponses: request.errorResponses.filter((item) => item.id !== response.id) })} />
-                ))}
-              </div>
-            </TabsContent>
             <TabsContent className="request-section-content request-body-content" value="response">
-              <BodyEditor schemaOnly request={{ ...request, schema: { fields: {}, body: request.responseFields ?? [{ id: 'response-root', parentId: null, name: '$', type: 'object', required: false, description: '' }] } }}
-                onChange={(next) => onChange({ ...request, responseFields: next.schema?.body })} />
+              <ViewTabs value={responseSection} onValueChange={setResponseSection} variant="button" label="응답 유형" className="response-definition-tabs min-h-0 flex-1"
+                items={[{ value: 'success', label: 'Success' }, { value: 'error', label: 'Error' }]}
+                toolbar={responseSection === 'error' ? <Button className="response-add-example" variant="ghost" size="sm" onClick={addErrorResponse}><Plus aria-hidden="true" />오류 응답 추가</Button> : undefined}>
+                <TabsContent value="success" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <BodyEditor schemaOnly request={{ ...request, schema: { fields: {}, body: request.responseFields ?? [{ id: 'response-root', parentId: null, name: '$', type: 'object', required: false, description: '' }] } }}
+                    onChange={(next) => onChange({ ...request, responseFields: next.schema?.body })} />
+                </TabsContent>
+                <TabsContent value="error" className="error-responses-content min-h-0 overflow-auto">
+                  <div className="error-response-list flex flex-col gap-3 p-1">
+                    {request.errorResponses.length === 0 && (
+                      <p className="error-responses-empty py-6 text-center text-sm text-muted-foreground">등록된 오류 응답이 없습니다. 오류 응답을 추가하세요.</p>
+                    )}
+                    {request.errorResponses.map((response, index) => (
+                      <ErrorResponseCard key={response.id} response={response} index={index}
+                        onChange={(updated) => onChange({ ...request, errorResponses: request.errorResponses.map((item) => item.id === updated.id ? updated : item) })}
+                        onDelete={() => onChange({ ...request, errorResponses: request.errorResponses.filter((item) => item.id !== response.id) })} />
+                    ))}
+                  </div>
+                </TabsContent>
+              </ViewTabs>
             </TabsContent>
             <TabsContent className="request-section-content request-body-content" value="body">
               <BodyEditor request={request} onChange={onChange} />

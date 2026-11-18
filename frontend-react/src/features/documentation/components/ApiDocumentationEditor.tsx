@@ -17,7 +17,7 @@ export function ApiDocumentationEditor({ request, onChange }: { request: SampleR
         <textarea id={descriptionId} className="document-description-input min-h-40 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label="API 문서 설명" placeholder="API 설명을 입력하세요." value={document.description} onChange={(event) => update('description', event.target.value)} />
       </section>
       <section className="document-request-example-editor space-y-2"><h2 className="font-semibold">요청 예시</h2><JsonEditor label="문서 요청 예시" initialValue={document.requestExample} onChange={(value) => update('requestExample', value)} /></section>
-      <section className="document-response-example-editor space-y-2"><h2 className="font-semibold">응답 예시</h2><p className="text-xs text-muted-foreground">문서에 공개할 예시를 직접 작성하세요. 실행 결과는 자동으로 추가하지 않습니다.</p><JsonEditor label="문서 응답 예시" initialValue={document.responseExample} onChange={(value) => update('responseExample', value)} /></section>
+      <section className="document-response-example-editor space-y-2"><h2 className="font-semibold">성공 응답 예시</h2><p className="text-xs text-muted-foreground">문서에 공개할 예시를 직접 작성하세요. 실행 결과는 자동으로 추가하지 않습니다.</p><JsonEditor label="문서 응답 예시" initialValue={document.responseExample} onChange={(value) => update('responseExample', value)} /></section>
     </Suspense>
   </div>
 }
