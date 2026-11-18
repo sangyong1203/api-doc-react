@@ -39,6 +39,8 @@ test('세트 적용은 API 명세·키·구조를 보존하고 값만 복원한�
   const request = { id: 'api', pathParams: [], headers: [], queryParams: [{ id: 'q', name: 'old', value: '1', enabled: true }], body: '', schema: { fields: { q: { type: 'number', required: false, description: '공통' } }, body: [] } }
   const preset = copyPayload(request)
   assert.equal('name' in preset.queryParams[0], false)
+  request.documentation = { description: 'API 공통 설명', requestExample: '{"value":0}', responseExample: '{"ok":false}' }
+  assert.equal('documentation' in copyPayload(request), false)
   request.queryParams[0].name = 'renamed'
   request.queryParams[0].value = '9'
   request.queryParams.push({ id: 'new', name: 'added', value: '7', enabled: true })
@@ -48,6 +50,7 @@ test('세트 적용은 API 명세·키·구조를 보존하고 값만 복원한�
   assert.equal(restored.queryParams[1].name, 'added')
   assert.equal(restored.queryParams[1].value, '')
   assert.equal(restored.schema, request.schema)
+  assert.deepEqual(restored.documentation, request.documentation)
   restored.queryParams[0].value = '3'
   assert.equal(preset.queryParams[0].value, '1')
 })

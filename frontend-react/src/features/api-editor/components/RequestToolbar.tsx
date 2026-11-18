@@ -1,4 +1,4 @@
-import { Play, Save, Square } from 'lucide-react'
+import { FileText, Play, Save, Square } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
@@ -17,11 +17,12 @@ type RequestToolbarProps = {
   running: boolean
   onChange: (request: SampleRequest) => void
   onSave: () => void
+  onDocument: () => void
   onRun: () => void
   onCancel: () => void
 }
 
-export function RequestToolbar({ request, collectionName, folderName, dirty, running, onChange, onSave, onRun, onCancel }: RequestToolbarProps) {
+export function RequestToolbar({ request, collectionName, folderName, dirty, running, onChange, onSave, onDocument, onRun, onCancel }: RequestToolbarProps) {
   return (
     <section className="request-toolbar" aria-label="요청 정보 및 실행">
       <div className="request-heading">
@@ -43,6 +44,9 @@ export function RequestToolbar({ request, collectionName, folderName, dirty, run
           {dirty && <Badge variant="warning">미저장</Badge>}
           <Button className="request-save text-xs" variant="outline" size="sm" disabled={!dirty} onClick={onSave}>
             <Save aria-hidden="true" />저장
+          </Button>
+          <Button className="request-document text-xs" variant="outline" size="sm" onClick={onDocument}>
+            <FileText aria-hidden="true" />문서
           </Button>
         </div>
       </div>

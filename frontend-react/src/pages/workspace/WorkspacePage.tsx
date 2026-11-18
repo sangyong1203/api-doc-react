@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Braces, FolderOpen } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { ApiDocumentationDialog } from '@/features/documentation/components/ApiDocumentationDialog'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -37,6 +38,7 @@ function copyActiveFields(fields: RequestField[]): Array<Pick<RequestField, 'nam
 }
 
 export function WorkspacePage() {
+  const [documentOpen, setDocumentOpen] = useState(false)
   const [collections, setCollections] = useState(SAMPLE_COLLECTIONS)
   const [folders, setFolders] = useState(SAMPLE_FOLDERS)
   const [requests, setRequests] = useState(SAMPLE_REQUESTS)
@@ -263,6 +265,21 @@ export function WorkspacePage() {
     updateTab(activeId, (tab) => ({ ...tab, execution: { status: 'cancelled' } }))
   }
 
+  function saveRequest() {
+    if (!activeTab) { return }
+    const error = validateRequest(activeTab.request)
+    if (error) { setRequestError({ id: activeTab.request.id, message: error }); return }
+    setRequestError(null)
+    updateTab(activeTab.request.id, (tab) => ({ ...tab, saved: tab.request }))
+    if (activeTab.selectedPresetId) {
+      const selectedId = activeTab.selectedPresetId
+      setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: (current[activeTab.request.id] ?? []).map((preset) =>
+        preset.id === selectedId ? { ...preset, values: copyPayload(activeTab.request) } : preset) }))
+    }
+    setRequests((current) => current.map((request) => request.id === activeTab.request.id
+      ? (activeTab.selectedPresetId ? applyPayload(activeTab.request, copyPayload(request)) : activeTab.request) : request))
+  }
+
   return (
     <main className="workspace-page">
       <header className="workspace-header">
@@ -289,19 +306,8 @@ export function WorkspacePage() {
                 dirty={JSON.stringify(activeTab.request) !== JSON.stringify(activeTab.saved)}
                 running={activeTab.execution.status === 'running'}
                 onChange={(request) => { setRequestError(null); updateTab(request.id, (tab) => ({ ...tab, request })) }}
-                onSave={() => {
-                  const error = validateRequest(activeTab.request)
-                  if (error) { setRequestError({ id: activeTab.request.id, message: error }); return }
-                  setRequestError(null)
-                  updateTab(activeTab.request.id, (tab) => ({ ...tab, saved: tab.request }))
-                  if (activeTab.selectedPresetId) {
-                    const selectedId = activeTab.selectedPresetId
-                    setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: (current[activeTab.request.id] ?? []).map((preset) =>
-                      preset.id === selectedId ? { ...preset, values: copyPayload(activeTab.request) } : preset) }))
-                  }
-                  setRequests((current) => current.map((request) => request.id === activeTab.request.id
-                    ? (activeTab.selectedPresetId ? applyPayload(activeTab.request, copyPayload(request)) : activeTab.request) : request))
-                }}
+                onSave={saveRequest}
+                onDocument={() => setDocumentOpen(true)}
                 onRun={runSample}
                 onCancel={cancelSample}
               />
@@ -317,6 +323,11 @@ export function WorkspacePage() {
                 />
                 <ResponseViewer execution={activeTab.execution} requestSnapshot={activeTab.requestSnapshot} />
               </div>
+              {documentOpen && <ApiDocumentationDialog request={activeTab.request}
+                dirty={JSON.stringify(activeTab.request) !== JSON.stringify(activeTab.saved)}
+                error={requestError?.id === activeTab.request.id ? requestError.message : undefined}
+                onChange={(request) => { setRequestError(null); updateTab(request.id, (tab) => ({ ...tab, request })) }}
+                onSave={saveRequest} onClose={() => setDocumentOpen(false)} /> }
             </TabsContent>
           ) : (
             <Empty className="workspace-empty">

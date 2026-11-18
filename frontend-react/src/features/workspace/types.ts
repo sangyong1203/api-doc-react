@@ -33,6 +33,7 @@ export type SampleRequest = {
   folderId: string | null
   method: HttpMethod
   url: string
+  documentation?: { description: string; requestExample: string; responseExample: string }
   pathParams: RequestField[]
   queryParams: RequestField[]
   headers: RequestField[]
