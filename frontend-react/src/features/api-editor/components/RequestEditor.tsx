@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { ViewTabs } from '@/components/ViewTabs'
 import { BodyEditor } from './BodyEditor'
-import { DEFAULT_SPEC, QUERY_FIELD_TYPES, addBodyField, hasChildFields, arrayPlaceholder, isQueryArray, queryFieldError, fieldValueError } from '../requestSchema'
+import { DEFAULT_SPEC, QUERY_FIELD_TYPES, addBodyField, hasChildFields, fieldPlaceholder, isQueryArray, queryFieldError, fieldValueError } from '../requestSchema'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -92,7 +92,8 @@ function RequestFields({ fields, specs = {}, path = false, query = false, onSpec
                     className="field-input"
                     aria-invalid={Boolean(error)}
                     aria-label={`${label} ${index + 1}행 값`}
-                    placeholder={query ? arrayPlaceholder(spec.type) ?? 'Value' : 'Value'}
+                    placeholder={fieldPlaceholder(spec)}
+                    aria-required={spec.required}
                     value={field.value}
                     onChange={(event) => updateField(field.id, { value: event.target.value })}
                   />
@@ -101,7 +102,7 @@ function RequestFields({ fields, specs = {}, path = false, query = false, onSpec
                   <SelectContent><SelectItem value="repeat">키 반복</SelectItem><SelectItem value="comma">쉼표 구분</SelectItem></SelectContent>
                 </Select>}
                   </div>
-                  {error && <span className="field-value-error block whitespace-normal text-xs text-error" role="status">{error}</span>}
+                  {error && !(spec.required && !field.value.trim()) && <span className="field-value-error block whitespace-normal text-xs text-error" role="status">{error}</span>}
                 </TableCell>
                 {onSpecChange && <TableCell><Input aria-label={`${label} ${index + 1}행 설명`} value={spec.description} onChange={(event) => onSpecChange(field.id, { ...spec, description: event.target.value })} /></TableCell>}
                 <TableCell>

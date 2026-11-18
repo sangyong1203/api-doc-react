@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { FieldSpec, SampleRequest } from '@/features/workspace/types'
-import { DEFAULT_SPEC, fieldValueError } from '../requestSchema'
+import { DEFAULT_SPEC, fieldPlaceholder, fieldValueError } from '../requestSchema'
 
 type Props = { request: SampleRequest; onChange: (request: SampleRequest) => void }
 
@@ -50,7 +50,7 @@ export function MultipartEditor({ request, onChange }: Props) {
               <Button asChild variant="outline" size="sm"><label htmlFor={`${inputId}-${field.id}`} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.control?.click() } }}><Upload />파일 선택</label></Button>
               <span className="multipart-file-name min-w-0 flex-1 truncate text-xs" title={file?.name}>{file?.name ?? '선택한 파일 없음'}</span>
               {file && <Button variant="ghost" size="icon-xs" aria-label={`${label} 파일 선택 해제`} onClick={() => removeFile(field.id)}><X /></Button>}
-            </div> : <><Input aria-label={`${label} 값`} value={field.value} aria-invalid={Boolean(valueError)} onChange={(event) => updateField(field.id, { value: event.target.value })} />{valueError && <p className="multipart-value-error whitespace-normal text-xs text-error">{valueError}</p>}</>}</TableCell>
+            </div> : <><Input aria-label={`${label} 값`} placeholder={fieldPlaceholder(spec)} aria-required={spec.required} value={field.value} aria-invalid={Boolean(valueError)} onChange={(event) => updateField(field.id, { value: event.target.value })} />{valueError && !(spec.required && !field.value.trim()) && <p className="multipart-value-error whitespace-normal text-xs text-error">{valueError}</p>}</>}</TableCell>
             <TableCell><Input aria-label={`${label} 설명`} value={spec.description} onChange={(event) => updateSpec(field.id, { description: event.target.value })} /></TableCell>
             <TableCell><Button variant="ghost" size="icon-xs" aria-label={`${label} 삭제`} onClick={() => { const remaining = { ...files }; delete remaining[field.id]; onChange({ ...request, multipartFields: fields.filter((item) => item.id !== field.id), multipartFiles: remaining }) }}><Trash2 /></Button></TableCell>
           </TableRow>

@@ -10,7 +10,7 @@ import { ViewTabs } from '@/components/ViewTabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 import type { BodyField, FieldType, SampleRequest } from '@/features/workspace/types'
-import { FIELD_TYPES, addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, getRequestBody, importBody, serializeBody, validateStructure } from '../requestSchema'
+import { FIELD_TYPES, addBodyField, fieldPlaceholder, changeBodyFieldType, hasChildFields, getRequestBody, importBody, serializeBody, validateStructure } from '../requestSchema'
 
 const JsonEditor = lazy(() => import('./JsonEditor').then((module) => ({ default: module.JsonEditor })))
 type Props = { request: SampleRequest; onChange: (request: SampleRequest) => void; schemaOnly?: boolean; hideToolbar?: boolean }
@@ -108,7 +108,7 @@ export function BodyEditor({ request, onChange, schemaOnly = false, hideToolbar 
     </>}>
 
     {!schemaOnly && request.bodyFormat === 'multipart' ? <MultipartEditor request={request} onChange={onChange} /> : <>
-    {(error || bodyError) && <p className="body-editor-error text-sm text-error" role="alert">{error || bodyError}</p>}
+    {(error || (bodyError && !bodyError.endsWith(': 필수값을 입력하세요.'))) && <p className="body-editor-error text-sm text-error" role="alert">{error || bodyError}</p>}
     <TabsContent className="body-editor-content min-h-0 flex-1 overflow-auto" value={view} aria-label={schemaOnly ? '응답 필드 명세' : undefined}>
       {view === 'json' ? <Suspense fallback={<p>편집기 준비 중…</p>}><JsonEditor initialValue={request.body} label="요청 JSON 본문" onChange={(body) => { setError(''); onChange({ ...request, body }) }} /></Suspense> :
         <Table className={`body-fields-table table-fixed [&_input]:bg-transparent! ${schemaOnly ? 'min-w-[820px]' : 'min-w-[1000px]'}`} aria-label={schemaOnly ? "응답 필드 명세" : "JSON 본문 필드 명세"}>
@@ -136,7 +136,7 @@ export function BodyEditor({ request, onChange, schemaOnly = false, hideToolbar 
               </div></TableCell>
               <TableCell className="required-cell px-0! text-center"><div className="required-checkbox flex w-full items-center justify-center"><Checkbox aria-label={`${label} 필수`} checked={field.required} onCheckedChange={(checked) => update(field, { required: checked === true })} /></div></TableCell>
               <TableCell><Select value={field.type} onValueChange={(type) => update(field, { type: type as FieldType })}><SelectTrigger className="field-type-select w-40 min-w-40 max-w-40 bg-transparent! hover:bg-transparent!" aria-label={`${label} 타입`}><SelectValue>{field.type === 'array' ? '타입 선택' : undefined}</SelectValue></SelectTrigger><SelectContent>{FIELD_TYPES.map((type) => <SelectItem key={type} value={type}>{type.endsWith(' array') ? `array (${type.split(' ')[0]})` : type}</SelectItem>)}</SelectContent></Select></TableCell>
-              {!schemaOnly && <TableCell>{container ? <span className="body-child-hint block whitespace-normal text-xs leading-relaxed text-muted-foreground">오른쪽 &quot;+&quot; 버튼을 클릭해 하위 필드를 추가하세요.</span> : <Input placeholder={arrayPlaceholder(field.type)} aria-label={`${label} 값`} disabled={!enabled || field.type === 'null'} value={field.type === 'null' ? 'null' : values[field.id] ?? ''} onChange={(event) => onChange({ ...request, bodyValues: { ...values, [field.id]: event.target.value } })} />}</TableCell>}
+              {!schemaOnly && <TableCell>{container ? <span className="body-child-hint block whitespace-normal text-xs leading-relaxed text-muted-foreground">오른쪽 &quot;+&quot; 버튼을 클릭해 하위 필드를 추가하세요.</span> : <Input placeholder={fieldPlaceholder(field)} aria-required={field.required} aria-label={`${label} 값`} disabled={!enabled || field.type === 'null'} value={field.type === 'null' ? 'null' : values[field.id] ?? ''} onChange={(event) => onChange({ ...request, bodyValues: { ...values, [field.id]: event.target.value } })} />}</TableCell>}
               <TableCell><Input aria-label={`${label} 설명`} value={field.description} onChange={(event) => update(field, { description: event.target.value })} /></TableCell>
               <TableCell><div className="body-field-actions flex">{container && <Button className="body-add-child [&_svg]:size-4" variant="ghost" size="icon-sm" aria-label={`${label} 하위 필드 추가`} onClick={() => add(field)}><Plus /></Button>}{field.parentId !== null && <Button variant="ghost" size="icon-xs" aria-label={`${label} 삭제`} onClick={() => requestDelete(field)}><Trash2 /></Button>}</div></TableCell>
             </TableRow>

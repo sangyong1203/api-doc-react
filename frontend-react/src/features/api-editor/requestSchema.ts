@@ -14,6 +14,12 @@ export function arrayPlaceholder(type: FieldType): string | undefined {
 
 export const DEFAULT_SPEC: FieldSpec = { required: false, type: 'string', description: '' }
 
+export function fieldPlaceholder(spec: FieldSpec): string {
+  const example = arrayPlaceholder(spec.type)
+  if (spec.required) { return `필수값을 입력하세요${example ? ` (${example})` : ''}` }
+  return example ?? 'Value'
+}
+
 // 빈 문자열과 0·false를 구분하고 JSON 값의 타입을 명시적으로 검증합니다.
 export function parseFieldValue(value: string, type: FieldType): unknown {
   if (type === 'file') { throw new Error('file은 Multipart Form에서만 사용할 수 있습니다.') }
