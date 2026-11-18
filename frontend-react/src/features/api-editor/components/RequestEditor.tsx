@@ -15,6 +15,7 @@ import type { ErrorResponseExample, FieldSpec, RequestField, SampleRequest } fro
 
 type RequestEditorProps = {
   payloadPicker: ReactNode
+  documentationEditor: ReactNode
   request: SampleRequest
   onChange: (request: SampleRequest) => void
 }
@@ -169,7 +170,7 @@ function ErrorResponseCard({ response, index, onChange, onDelete }: ErrorRespons
   )
 }
 
-export function RequestEditor({ request, onChange, payloadPicker }: RequestEditorProps) {
+export function RequestEditor({ request, onChange, payloadPicker, documentationEditor }: RequestEditorProps) {
   const [section, setSection] = useState('query')
   const [tabScroll, setTabScroll] = useState({ overflowing: false, canScrollLeft: false, canScrollRight: false })
   const tabNavigationRef = useRef<HTMLDivElement>(null)
@@ -225,7 +226,7 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
   }
 
   function addField() {
-    if (section === 'body' || section === 'errors' || section === 'response') {
+    if (section === 'body' || section === 'errors' || section === 'response' || section === 'documentation') {
       return
     }
     const fieldKey = section === 'path' ? 'pathParams' : section === 'query' ? 'queryParams' : 'headers'
@@ -247,6 +248,7 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
     { value: 'headers', label: 'Headers', hasData: request.headers.some((field) => field.enabled && field.name.trim()) },
     { value: 'response', label: '응답 명세', hasData: Boolean(request.responseFields?.length) },
     { value: 'errors', label: '오류 응답', hasData: request.errorResponses.length > 0 },
+    { value: 'documentation', label: '문서', hasData: Boolean(request.documentation && Object.values(request.documentation).some((value) => value.trim())) },
   ]
   function changeSpec(id: string, spec: FieldSpec) {
     const typeChanged = (request.schema?.fields[id]?.type ?? DEFAULT_SPEC.type) !== spec.type
@@ -306,8 +308,8 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
                   </Button>
                 )}
               </div>
-              {payloadPicker}
-              {section !== 'body' && section !== 'response' && (
+              {section !== 'documentation' && payloadPicker}
+              {section !== 'body' && section !== 'response' && section !== 'documentation' && (
                 <Button className="request-add-field" variant="ghost" size="sm" onClick={section === 'errors' ? addErrorResponse : addField}>
                   <Plus aria-hidden="true" />{section === 'errors' ? '오류 응답 추가' : '행 추가'}
                 </Button>
@@ -341,6 +343,9 @@ export function RequestEditor({ request, onChange, payloadPicker }: RequestEdito
             </TabsContent>
             <TabsContent className="request-section-content request-body-content" value="body">
               <BodyEditor request={request} onChange={onChange} />
+            </TabsContent>
+            <TabsContent className="request-section-content" value="documentation">
+              {documentationEditor}
             </TabsContent>
           </Tabs>
         </CardContent>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Braces, FolderOpen } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { ApiDocumentationDialog } from '@/features/documentation/components/ApiDocumentationDialog'
+import { ApiDocumentationEditor } from '@/features/documentation/components/ApiDocumentationEditor'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -314,6 +315,8 @@ export function WorkspacePage() {
               {requestError?.id === activeTab.request.id && <p className="request-validation-error px-6 pb-2 text-sm text-error" role="alert">{requestError.message}</p>}
               <div className="request-response-layout">
                 <RequestEditor
+                  documentationEditor={<ApiDocumentationEditor request={activeTab.request}
+                    onChange={(request) => { setRequestError(null); updateTab(request.id, (tab) => ({ ...tab, request })) }} />}
                   payloadPicker={<PayloadPicker presets={presetsByApi[activeTab.request.id] ?? []} selectedId={activeTab.selectedPresetId}
                     defaultId={defaultPresets[activeTab.request.id] ?? presetsByApi[activeTab.request.id]?.[0]?.id ?? null} onSelect={selectPreset} onAdd={addPreset} onDelete={deletePreset}
                     onDefault={(id) => setDefaultPresets((current) => ({ ...current, [activeTab.request.id]: id }))}
@@ -324,10 +327,7 @@ export function WorkspacePage() {
                 <ResponseViewer execution={activeTab.execution} requestSnapshot={activeTab.requestSnapshot} />
               </div>
               {documentOpen && <ApiDocumentationDialog request={activeTab.request}
-                dirty={JSON.stringify(activeTab.request) !== JSON.stringify(activeTab.saved)}
-                error={requestError?.id === activeTab.request.id ? requestError.message : undefined}
-                onChange={(request) => { setRequestError(null); updateTab(request.id, (tab) => ({ ...tab, request })) }}
-                onSave={saveRequest} onClose={() => setDocumentOpen(false)} /> }
+                onClose={() => setDocumentOpen(false)} /> }
             </TabsContent>
           ) : (
             <Empty className="workspace-empty">
