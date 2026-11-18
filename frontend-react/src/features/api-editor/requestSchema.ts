@@ -119,14 +119,14 @@ export function importBody(body: string, previous: BodyField[], rootType?: Field
 }
 
 // 배열은 자식 순서로, 객체는 같은 부모 안의 고유 키로 조립합니다. 잘못된 입력은 원문을 덮어쓰지 않습니다.
-export function serializeBody(fields: BodyField[], values: Record<string, string>): string {
+export function serializeBody(fields: BodyField[], values: Record<string, string>, enabled: Record<string, boolean> = {}): string {
   if (!fields.length) { return '' }
   // 선택 숫자·불리언의 빈 입력은 값 미설정으로 취급합니다. 0·false는 실제 값으로 보존합니다.
   function omitted(field: BodyField): boolean {
-    return !field.required && (field.type === 'number' || field.type === 'boolean') && !(values[field.id] ?? '').trim()
+    return enabled[field.id] === false || (!field.required && (field.type === 'number' || field.type === 'boolean') && !(values[field.id] ?? '').trim())
   }
   function build(field: BodyField): unknown {
-    const children = fields.filter((item) => item.parentId === field.id)
+    const children = fields.filter((item) => item.parentId === field.id && enabled[item.id] !== false)
     if (field.type === 'object') {
       const keys = new Set<string>()
       const entries: [string, unknown][] = []
@@ -246,7 +246,13 @@ export function withDefaultBodyView(request: SampleRequest): SampleRequest {
 
 export function getRequestBody(request: SampleRequest): string {
   if (request.bodyFormat === 'multipart') { return describeMultipart(request) }
-  return request.bodyView === 'fields' ? serializeBody(request.schema?.body ?? [], request.bodyValues ?? {}) : request.body
+  if (request.bodyView === 'fields') { return serializeBody(request.schema?.body ?? [], request.bodyValues ?? {}, request.bodyEnabled) }
+  // JSON 원문은 모든 값을 유지하고 실행용 본문에만 사용 여부를 적용합니다.
+  if (Object.values(request.bodyEnabled ?? {}).some((enabled) => !enabled)) {
+    const imported = importBody(request.body, request.schema?.body ?? [])
+    return serializeBody(imported.fields, imported.values, request.bodyEnabled)
+  }
+  return request.body
 }
 
 // 객체의 키는 부모별로 검증합니다. 배열 항목의 이름은 직렬화 시 인덱스로 처리합니다.

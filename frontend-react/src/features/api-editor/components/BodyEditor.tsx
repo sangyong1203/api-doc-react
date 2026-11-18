@@ -24,6 +24,16 @@ export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
   const view = schemaOnly ? 'fields' : request.bodyView ?? 'json'
   const root = fields.find((field) => field.parentId === null)
   const rootContainer = root && hasChildFields(root.type)
+  function parentDisabled(field: BodyField): boolean {
+    const visited = new Set<string>()
+    let parentId = field.parentId
+    while (parentId && !visited.has(parentId)) {
+      if (request.bodyEnabled?.[parentId] === false) { return true }
+      visited.add(parentId)
+      parentId = fields.find((item) => item.id === parentId)?.parentId ?? null
+    }
+    return false
+  }
   let bodyError = schemaOnly ? validateStructure(fields) ?? '' : ''
   if (!schemaOnly) {
     try { const body = getRequestBody(request); if (body.trim()) { JSON.parse(body) } } catch (cause) { bodyError = cause instanceof Error ? cause.message : '본문을 확인하세요.' }
@@ -66,7 +76,7 @@ export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
   }
 
   function remove(ids: string[]) {
-    onChange({ ...request, schema: { fields: request.schema?.fields ?? {}, body: fields.filter((item) => !ids.includes(item.id)) }, bodyValues: Object.fromEntries(Object.entries(values).filter(([id]) => !ids.includes(id))) })
+    onChange({ ...request, schema: { fields: request.schema?.fields ?? {}, body: fields.filter((item) => !ids.includes(item.id)) }, bodyValues: Object.fromEntries(Object.entries(values).filter(([id]) => !ids.includes(id))), bodyEnabled: Object.fromEntries(Object.entries(request.bodyEnabled ?? {}).filter(([id]) => !ids.includes(id))) })
     setDeleting(null)
   }
 
@@ -103,6 +113,7 @@ export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
       {view === 'json' ? <Suspense fallback={<p>편집기 준비 중…</p>}><JsonEditor initialValue={request.body} label="요청 JSON 본문" onChange={(body) => { setError(''); onChange({ ...request, body }) }} /></Suspense> :
         <Table className={`body-fields-table table-fixed [&_input]:bg-transparent! ${schemaOnly ? 'min-w-[820px]' : 'min-w-[1000px]'}`} aria-label={schemaOnly ? "응답 필드 명세" : "JSON 본문 필드 명세"}>
           <colgroup>
+            {!schemaOnly && <col className="w-12" />}
             <col className={schemaOnly ? 'w-[40%]' : 'w-[30%]'} />
             <col className="w-12" />
             <col className="w-44" />
@@ -110,22 +121,26 @@ export function BodyEditor({ request, onChange, schemaOnly = false }: Props) {
             <col />
             <col className="w-[72px]" />
           </colgroup>
-          <TableHeader className="bg-muted/50"><TableRow><TableHead>키</TableHead><TableHead className="text-center">필수</TableHead><TableHead>타입</TableHead>{!schemaOnly && <TableHead>값</TableHead>}<TableHead>설명</TableHead><TableHead><span className="sr-only">작업</span></TableHead></TableRow></TableHeader>
+          <TableHeader className="bg-muted/50"><TableRow>{!schemaOnly && <TableHead><span className="sr-only">사용</span></TableHead>}<TableHead><span className="body-key-heading block pl-7">키</span></TableHead><TableHead className="text-center">필수</TableHead><TableHead>타입</TableHead>{!schemaOnly && <TableHead>값</TableHead>}<TableHead>설명</TableHead><TableHead><span className="sr-only">작업</span></TableHead></TableRow></TableHeader>
           <TableBody>{rows.map(({ field, depth, arrayIndex, group }) => {
             const container = hasChildFields(field.type)
             const label = `${schemaOnly ? '응답' : '본문'} ${field.parentId === null ? '값' : field.name}`
+            const inheritedDisabled = !schemaOnly && parentDisabled(field)
+            const enabled = !inheritedDisabled && request.bodyEnabled?.[field.id] !== false
             return <TableRow key={field.id}>
+              {!schemaOnly && <TableCell><Checkbox aria-label={`${label} 사용`} checked={enabled} disabled={inheritedDisabled}
+                onCheckedChange={(checked) => onChange({ ...request, bodyEnabled: { ...request.bodyEnabled, [field.id]: checked === true } })} /></TableCell>}
               <TableCell>{group && <span className="body-array-item-label mb-1 block text-xs text-muted-foreground">{group}</span>}<div className="body-field-key flex min-w-0 items-center gap-1" style={{ paddingLeft: depth * 16 }}>
                 <span className="body-field-toggle-slot flex size-6 shrink-0 items-center justify-center">{container && <Button size="icon-xs" variant="ghost" aria-label={`${label} ${collapsed.includes(field.id) ? '펼치기' : '접기'}`} onClick={() => setCollapsed(collapsed.includes(field.id) ? collapsed.filter((id) => id !== field.id) : [...collapsed, field.id])}>{collapsed.includes(field.id) ? <ChevronRight /> : <ChevronDown />}</Button>}</span>
                 {field.parentId === null ? <span className="body-scalar-label text-muted-foreground">값</span> : <Input className="body-field-name min-w-16 flex-1" aria-label={`${label} 키`} value={arrayIndex === null ? field.name : `항목 ${arrayIndex + 1}`} readOnly={arrayIndex !== null} onChange={(event) => update(field, { name: event.target.value })} />}
               </div></TableCell>
               <TableCell className="required-cell px-0! text-center"><div className="required-checkbox flex w-full items-center justify-center"><Checkbox aria-label={`${label} 필수`} checked={field.required} onCheckedChange={(checked) => update(field, { required: checked === true })} /></div></TableCell>
               <TableCell><Select value={field.type} onValueChange={(type) => update(field, { type: type as FieldType })}><SelectTrigger className="field-type-select w-40 min-w-40 max-w-40 bg-transparent! hover:bg-transparent!" aria-label={`${label} 타입`}><SelectValue>{field.type === 'array' ? '타입 선택' : undefined}</SelectValue></SelectTrigger><SelectContent>{FIELD_TYPES.map((type) => <SelectItem key={type} value={type}>{type.endsWith(' array') ? `array (${type.split(' ')[0]})` : type}</SelectItem>)}</SelectContent></Select></TableCell>
-              {!schemaOnly && <TableCell>{container ? <span className="body-child-hint block whitespace-normal text-xs leading-relaxed text-muted-foreground">오른쪽 &quot;+&quot; 버튼을 클릭해 하위 필드를 추가하세요.</span> : <Input placeholder={arrayPlaceholder(field.type)} aria-label={`${label} 값`} disabled={field.type === 'null'} value={field.type === 'null' ? 'null' : values[field.id] ?? ''} onChange={(event) => onChange({ ...request, bodyValues: { ...values, [field.id]: event.target.value } })} />}</TableCell>}
+              {!schemaOnly && <TableCell>{container ? <span className="body-child-hint block whitespace-normal text-xs leading-relaxed text-muted-foreground">오른쪽 &quot;+&quot; 버튼을 클릭해 하위 필드를 추가하세요.</span> : <Input placeholder={arrayPlaceholder(field.type)} aria-label={`${label} 값`} disabled={!enabled || field.type === 'null'} value={field.type === 'null' ? 'null' : values[field.id] ?? ''} onChange={(event) => onChange({ ...request, bodyValues: { ...values, [field.id]: event.target.value } })} />}</TableCell>}
               <TableCell><Input aria-label={`${label} 설명`} value={field.description} onChange={(event) => update(field, { description: event.target.value })} /></TableCell>
               <TableCell><div className="body-field-actions flex">{container && <Button className="body-add-child [&_svg]:size-4" variant="ghost" size="icon-sm" aria-label={`${label} 하위 필드 추가`} onClick={() => add(field)}><Plus /></Button>}{field.parentId !== null && <Button variant="ghost" size="icon-xs" aria-label={`${label} 삭제`} onClick={() => requestDelete(field)}><Trash2 /></Button>}</div></TableCell>
             </TableRow>
-          })}{rows.length === 0 && <TableRow><TableCell colSpan={schemaOnly ? 5 : 6} className="body-fields-empty text-muted-foreground">등록된 필드가 없습니다. 필드를 추가하세요.</TableCell></TableRow>}</TableBody>
+          })}{rows.length === 0 && <TableRow><TableCell colSpan={schemaOnly ? 5 : 7} className="body-fields-empty text-muted-foreground">등록된 필드가 없습니다. 필드를 추가하세요.</TableCell></TableRow>}</TableBody>
         </Table>}
     </TabsContent>
     <AlertDialog open={Boolean(deleting)} onOpenChange={(open) => { if (!open) { setDeleting(null) } }}><AlertDialogContent><AlertDialogTitle>{schemaOnly ? '응답' : '본문'} 필드 삭제</AlertDialogTitle><AlertDialogDescription>하위 필드를 포함한 {deleting?.length}개 필드를 삭제하시겠습니까? API 공통 명세에서 제거됩니다.</AlertDialogDescription><div className="body-delete-actions flex justify-end gap-2"><AlertDialogCancel asChild><Button variant="outline">취소</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant="destructive" onClick={() => { if (deleting) { remove(deleting) } }}>삭제</Button></AlertDialogAction></div></AlertDialogContent></AlertDialog>

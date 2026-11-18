@@ -46,6 +46,7 @@ export type SampleRequest = {
   schema?: RequestSchema
   bodyView?: 'json' | 'fields'
   bodyValues?: Record<string, string>
+  bodyEnabled?: Record<string, boolean>
   errorResponses: ErrorResponseExample[]
 }
 

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import { File } from 'node:buffer'
 import assert from 'node:assert/strict'
-import { addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, createMultipartForm, describeMultipart, withDefaultBodyView, createRequestUrl, serializeQuery, queryFieldError, validateRequest, validateMultipart, fieldValueError, importBody, parseFieldValue, serializeBody, validateStructure } from './requestSchema.ts'
+import { getRequestBody, addBodyField, arrayPlaceholder, changeBodyFieldType, hasChildFields, createMultipartForm, describeMultipart, withDefaultBodyView, createRequestUrl, serializeQuery, queryFieldError, validateRequest, validateMultipart, fieldValueError, importBody, parseFieldValue, serializeBody, validateStructure } from './requestSchema.ts'
 import { applyPayload, copyPayload } from '../payload-presets/types.ts'
 
 test('JSON 구조와 0·false·null·배열 루트가 왕복 변환된다', () => {
@@ -215,4 +215,53 @@ test('Request URL은 기존 Query를 보존하고 fragment를 전송 대상에�
   assert.equal(createRequestUrl('https://api.test/items?', 'page=1'), 'https://api.test/items?page=1')
   assert.equal(createRequestUrl('https://api.test/items?limit=10&', 'page=1'), 'https://api.test/items?limit=10&page=1')
   assert.equal(createRequestUrl('{{baseUrl}}/items#section', ''), '{{baseUrl}}/items')
+})
+
+
+test('Body 사용 해제는 값과 명세를 유지하고 실행용 본문에서만 제외한다', () => {
+  const imported = importBody('{"name":"robot","count":0,"active":false,"nested":{"secret":"value"}}', [])
+  const nested = imported.fields.find((field) => field.name === 'nested')
+  const name = imported.fields.find((field) => field.name === 'name')
+  const request = { body: '', bodyView: 'fields', schema: { fields: {}, body: imported.fields }, bodyValues: imported.values, bodyEnabled: { [nested.id]: false, [name.id]: false } }
+  const original = JSON.parse(JSON.stringify(request))
+  assert.deepEqual(JSON.parse(getRequestBody(request)), { count: 0, active: false })
+  assert.deepEqual(request, original)
+  assert.deepEqual(JSON.parse(getRequestBody({ ...request, bodyEnabled: {} })), { name: 'robot', count: 0, active: false, nested: { secret: 'value' } })
+})
+
+test('사용 해제된 Body 필드와 부모의 하위 필드는 값 검증과 배열 출력에서 제외한다', () => {
+  const imported = importBody('{"count":1,"nested":{"required":1},"items":[{"value":1},{"value":2}]}', [])
+  const count = imported.fields.find((field) => field.name === 'count')
+  const nested = imported.fields.find((field) => field.name === 'nested')
+  const required = imported.fields.find((field) => field.name === 'required')
+  const array = imported.fields.find((field) => field.name === 'items')
+  const first = imported.fields.find((field) => field.parentId === array.id)
+  const fields = imported.fields.map((field) => field.id === count.id || field.id === required.id ? { ...field, required: true } : field)
+  const values = { ...imported.values, [count.id]: 'invalid', [required.id]: '' }
+  assert.deepEqual(JSON.parse(serializeBody(fields, values, { [count.id]: false, [nested.id]: false, [first.id]: false })), { items: [{ value: 2 }] })
+  assert.throws(() => serializeBody(fields, values))
+})
+
+test('JSON 원문 보기에서도 Body 사용 여부를 적용하며 편집 원문은 보존한다', () => {
+  const body = '{"name":"robot","count":0}'
+  const imported = importBody(body, [])
+  const name = imported.fields.find((field) => field.name === 'name')
+  const request = { body, bodyView: 'json', schema: { fields: {}, body: imported.fields }, bodyEnabled: { [name.id]: false } }
+  assert.deepEqual(JSON.parse(getRequestBody(request)), { count: 0 })
+  assert.equal(request.body, body)
+  assert.equal(getRequestBody({ ...request, bodyEnabled: {} }), body)
+})
+
+test('Body 사용 여부는 입력 세트별로 복사·복원하고 API 명세를 변경하지 않는다', () => {
+  const imported = importBody('{"name":"robot"}', [])
+  const name = imported.fields.find((field) => field.name === 'name')
+  const request = { pathParams: [], queryParams: [], headers: [], body: '', bodyView: 'fields', schema: { fields: {}, body: imported.fields }, bodyValues: imported.values, bodyEnabled: { [name.id]: false } }
+  const preset = copyPayload(request)
+  request.bodyEnabled[name.id] = true
+  const restored = applyPayload(request, preset)
+  assert.equal(restored.bodyEnabled[name.id], false)
+  assert.equal(request.bodyEnabled[name.id], true)
+  assert.equal(restored.schema, request.schema)
+  restored.bodyEnabled[name.id] = true
+  assert.equal(preset.bodyEnabled[name.id], false)
 })
