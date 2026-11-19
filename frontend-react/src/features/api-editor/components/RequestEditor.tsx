@@ -137,8 +137,6 @@ type ErrorResponseCardProps = {
 }
 
 function ErrorResponseCard({ response, index, onChange, onDelete }: ErrorResponseCardProps) {
-  const statusInvalid = !/^[45]\d{2}$/.test(response.status)
-  const statusErrorId = useId()
   const label = `오류 응답 ${index + 1}`
 
   return (
@@ -153,13 +151,11 @@ function ErrorResponseCard({ response, index, onChange, onDelete }: ErrorRespons
           <label className="error-response-status flex w-32 flex-col gap-1">
             <span className="text-xs text-muted-foreground">HTTP 상태 코드</span>
             <Input aria-label={`${label} 상태 코드`} inputMode="numeric" maxLength={3}
-              aria-invalid={statusInvalid} aria-describedby={statusInvalid ? statusErrorId : undefined}
               value={response.status} onChange={(event) => onChange({ ...response, status: event.target.value })} />
           </label>
           <Button className="error-response-delete mt-5" variant="ghost" size="icon-sm"
             aria-label={`${label} 삭제`} onClick={onDelete}><Trash2 aria-hidden="true" /></Button>
         </div>
-        {statusInvalid && <p className="error-response-status-error text-xs text-error" id={statusErrorId} role="status">상태 코드는 400~599로 입력하세요.</p>}
         <label className="error-response-description flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">설명</span>
           <Input aria-label={`${label} 설명`} placeholder="오류가 발생하는 상황을 입력하세요." value={response.description}
