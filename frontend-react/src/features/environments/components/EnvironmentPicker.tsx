@@ -20,7 +20,7 @@ export function EnvironmentPicker() {
     <div className="environment-picker">
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
-          <Button className="environment-trigger max-w-56 text-xs" variant="outline" size="sm" id="workspace-environment" aria-label="환경 선택">
+          <Button className="environment-trigger max-w-56 text-xs" variant="outline" size="sm" aria-label="환경 선택">
             <span className="environment-selected-name truncate">{selected?.name ?? '환경 없음'}</span>
             <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
           </Button>

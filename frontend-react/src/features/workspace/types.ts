@@ -1,5 +1,6 @@
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 
+export type Workspace = { id: string; name: string }
 export type WorkspaceCollection = { id: string; name: string }
 export type WorkspaceFolder = { id: string; collectionId: string; name: string }
 

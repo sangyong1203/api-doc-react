@@ -20,9 +20,10 @@ import { PayloadPicker } from '@/features/payload-presets/components/PayloadPick
 import { applyPayload, copyPayload, type PayloadPreset } from '@/features/payload-presets/types'
 import { ResponseViewer } from '@/features/request-runner/components/ResponseViewer'
 import { WorkspaceTabs } from '@/features/workspace/components/WorkspaceTabs'
+import { WorkspacePicker } from '@/features/workspace/components/WorkspacePicker'
 import { EnvironmentPicker } from '@/features/environments/components/EnvironmentPicker'
 import { createSampleResponse, SAMPLE_COLLECTIONS, SAMPLE_FOLDERS, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
-import type { RequestField, SampleRequest, WorkspaceTab } from '@/features/workspace/types'
+import type { RequestField, SampleRequest, Workspace, WorkspaceTab } from '@/features/workspace/types'
 import '@/styles/workspace.css'
 
 function createInitialPreset(request: SampleRequest): PayloadPreset {
@@ -40,14 +41,52 @@ function copyActiveFields(fields: RequestField[]): Array<Pick<RequestField, 'nam
     .map(({ name, value }) => ({ name, value }))
 }
 
+const INITIAL_WORKSPACE: Workspace = { id: 'robot-workspace', name: 'Robot workspace' }
+
 export function WorkspacePage() {
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([INITIAL_WORKSPACE])
+  const [selectedId, setSelectedId] = useState(INITIAL_WORKSPACE.id)
+
+  function createWorkspace(name: string): string | null {
+    const trimmedName = name.trim()
+    if (!trimmedName) { return '작업 공간 이름을 입력하세요.' }
+    if (workspaces.some((workspace) => workspace.name.toLowerCase() === trimmedName.toLowerCase())) {
+      return '같은 이름의 작업 공간이 있습니다.'
+    }
+    const workspace = { id: crypto.randomUUID(), name: trimmedName }
+    setWorkspaces((current) => [...current, workspace])
+    setSelectedId(workspace.id)
+    return null
+  }
+
+  return (
+    <div className="workspace-sessions">
+      {workspaces.map((workspace) => (
+        // 편집 화면을 유지해 미저장 초안·파일 선택·열린 탭과 기능별 로컬 상태를 보존합니다.
+        <div className="workspace-session" key={workspace.id} hidden={workspace.id !== selectedId}>
+          <WorkspaceSession workspace={workspace} workspaces={workspaces} onSelect={setSelectedId} onCreate={createWorkspace} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+type WorkspaceSessionProps = {
+  workspace: Workspace
+  workspaces: Workspace[]
+  onSelect: (id: string) => void
+  onCreate: (name: string) => string | null
+}
+
+function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: WorkspaceSessionProps) {
+  const initialRequests = workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_REQUESTS : []
   const [documentOpen, setDocumentOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyByApi, setHistoryByApi] = useState<Record<string, ApiSaveHistory[]>>({})
-  const [collections, setCollections] = useState(SAMPLE_COLLECTIONS)
-  const [folders, setFolders] = useState(SAMPLE_FOLDERS)
-  const [requests, setRequests] = useState(SAMPLE_REQUESTS)
-  const [presetsByApi, setPresetsByApi] = useState<Record<string, PayloadPreset[]>>(() => Object.fromEntries(SAMPLE_REQUESTS.map((request) => [request.id, [createInitialPreset(request)]])))
+  const [collections, setCollections] = useState(workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_COLLECTIONS : [])
+  const [folders, setFolders] = useState(workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_FOLDERS : [])
+  const [requests, setRequests] = useState(initialRequests)
+  const [presetsByApi, setPresetsByApi] = useState<Record<string, PayloadPreset[]>>(() => Object.fromEntries(initialRequests.map((request) => [request.id, [createInitialPreset(request)]])))
   const [defaultPresets, setDefaultPresets] = useState<Record<string, string | null>>({})
   const [requestError, setRequestError] = useState<{ id: string; message: string } | null>(null)
   const [confirmation, setConfirmation] = useState<{
@@ -58,8 +97,8 @@ export function WorkspacePage() {
   } | null>(null)
   const [editTarget, setEditTarget] = useState<CollectionDialogTarget | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CollectionDeleteTarget | null>(null)
-  const [tabs, setTabs] = useState<WorkspaceTab[]>([createTab(SAMPLE_REQUESTS[0])])
-  const [activeId, setActiveId] = useState<string | null>(SAMPLE_REQUESTS[0].id)
+  const [tabs, setTabs] = useState<WorkspaceTab[]>(() => initialRequests[0] ? [createTab(initialRequests[0])] : [])
+  const [activeId, setActiveId] = useState<string | null>(initialRequests[0]?.id ?? null)
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const activeTab = tabs.find((tab) => tab.request.id === activeId)
   const deleteRequests = deleteTarget ? requests.filter((request) => deleteTarget.kind === 'collection'
@@ -310,7 +349,7 @@ export function WorkspacePage() {
       <header className="workspace-header">
         <div className="workspace-brand"><Braces aria-hidden="true" />API Doc</div>
         <Separator orientation="vertical" className="header-divider" />
-        <div className="workspace-name"><FolderOpen aria-hidden="true" /><span>Robot workspace</span></div>
+        <WorkspacePicker workspace={workspace} workspaces={workspaces} onSelect={onSelect} onCreate={onCreate} />
         <EnvironmentPicker />
       </header>
       <Separator />
