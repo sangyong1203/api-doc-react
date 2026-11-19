@@ -40,10 +40,10 @@ export function MultipartEditor({ request, onChange }: Props) {
           const label = `Multipart ${index + 1}행`
           const file = files[field.id]?.file
           const valueError = field.enabled && spec.type !== 'file' ? fieldValueError(field.value, spec) : null
-          return <TableRow key={field.id}>
-            <TableCell><Checkbox aria-label={`${label} 사용`} checked={field.enabled} onCheckedChange={(checked) => updateField(field.id, { enabled: checked === true })} /></TableCell>
+          return <TableRow className="multipart-field-row [&>td]:align-top" key={field.id}>
+            <TableCell className="pt-4"><Checkbox aria-label={`${label} 사용`} checked={field.enabled} onCheckedChange={(checked) => updateField(field.id, { enabled: checked === true })} /></TableCell>
             <TableCell><Input aria-label={`${label} 키`} value={field.name} onChange={(event) => updateField(field.id, { name: event.target.value })} /></TableCell>
-            <TableCell className="required-cell px-0! text-center"><div className="flex w-full justify-center"><Checkbox aria-label={`${label} 필수`} checked={spec.required} onCheckedChange={(checked) => updateSpec(field.id, { required: checked === true })} /></div></TableCell>
+            <TableCell className="required-cell px-0! text-center"><div className="required-checkbox flex h-8 w-full items-center justify-center"><Checkbox aria-label={`${label} 필수`} checked={spec.required} onCheckedChange={(checked) => updateSpec(field.id, { required: checked === true })} /></div></TableCell>
             <TableCell><Select value={spec.type} onValueChange={(type) => updateSpec(field.id, { type: type as FieldSpec['type'] })}><SelectTrigger className="field-type-select w-40 bg-transparent! hover:bg-transparent!" aria-label={`${label} 타입`}><SelectValue /></SelectTrigger><SelectContent>{(['string', 'number', 'boolean', 'file'] as const).map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></TableCell>
             <TableCell>{spec.type === 'file' ? <div className="multipart-file-control flex min-w-0 items-center gap-1">
               <input className="multipart-file-input sr-only" id={`${inputId}-${field.id}`} type="file" aria-label={`${label} 파일 선택`} onChange={(event) => { const selected = event.target.files?.[0]; if (selected) { onChange({ ...request, multipartFiles: { ...files, [field.id]: { selectionId: crypto.randomUUID(), file: selected } } }) } event.target.value = '' }} />
@@ -52,7 +52,7 @@ export function MultipartEditor({ request, onChange }: Props) {
               {file && <Button variant="ghost" size="icon-xs" aria-label={`${label} 파일 선택 해제`} onClick={() => removeFile(field.id)}><X /></Button>}
             </div> : <><Input aria-label={`${label} 값`} placeholder={fieldPlaceholder(spec)} aria-required={spec.required} value={field.value} aria-invalid={Boolean(valueError)} onChange={(event) => updateField(field.id, { value: event.target.value })} />{valueError && !(spec.required && !field.value.trim()) && <p className="multipart-value-error whitespace-normal text-xs text-error">{valueError}</p>}</>}</TableCell>
             <TableCell><Input aria-label={`${label} 설명`} value={spec.description} onChange={(event) => updateSpec(field.id, { description: event.target.value })} /></TableCell>
-            <TableCell><Button variant="ghost" size="icon-xs" aria-label={`${label} 삭제`} onClick={() => { const remaining = { ...files }; delete remaining[field.id]; onChange({ ...request, multipartFields: fields.filter((item) => item.id !== field.id), multipartFiles: remaining }) }}><Trash2 /></Button></TableCell>
+            <TableCell className="pt-3"><Button variant="ghost" size="icon-xs" aria-label={`${label} 삭제`} onClick={() => { const remaining = { ...files }; delete remaining[field.id]; onChange({ ...request, multipartFields: fields.filter((item) => item.id !== field.id), multipartFiles: remaining }) }}><Trash2 /></Button></TableCell>
           </TableRow>
         })}{fields.length === 0 && <TableRow><TableCell colSpan={7} className="multipart-empty text-muted-foreground">필드를 추가해 텍스트 또는 파일을 입력하세요.</TableCell></TableRow>}</TableBody>
       </Table>

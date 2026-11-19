@@ -64,8 +64,8 @@ function RequestFields({ fields, specs = {}, path = false, query = false, onSpec
               const spec = { ...(specs[field.id] ?? DEFAULT_SPEC), ...(path ? { required: true } : {}) }
               const error = field.enabled ? (query ? queryFieldError(field.value, spec) : fieldValueError(field.value, spec)) : null
               return (
-              <TableRow key={field.id}>
-                <TableCell>
+              <TableRow className="request-field-row [&>td]:align-top" key={field.id}>
+                <TableCell className="pt-4">
                   <Checkbox
                     checked={path || field.enabled}
                     disabled={path}
@@ -83,7 +83,7 @@ function RequestFields({ fields, specs = {}, path = false, query = false, onSpec
                   />
                 </TableCell>
                 {onSpecChange && <>
-                  <TableCell className="required-cell px-0! text-center"><div className="required-checkbox flex w-full items-center justify-center"><Checkbox aria-label={`${label} ${index + 1}행 필수`} checked={spec.required} disabled={path} onCheckedChange={(checked) => onSpecChange(field.id, { ...spec, required: checked === true })} /></div></TableCell>
+                  <TableCell className="required-cell px-0! text-center"><div className="required-checkbox flex h-8 w-full items-center justify-center"><Checkbox aria-label={`${label} ${index + 1}행 필수`} checked={spec.required} disabled={path} onCheckedChange={(checked) => onSpecChange(field.id, { ...spec, required: checked === true })} /></div></TableCell>
                   <TableCell><Select value={spec.type} onValueChange={(type) => onSpecChange(field.id, { ...spec, type: type as FieldSpec['type'] })}><SelectTrigger className="field-type-select w-40 min-w-40 max-w-40 bg-transparent! hover:bg-transparent!" aria-label={`${label} ${index + 1}행 타입`}><SelectValue /></SelectTrigger><SelectContent>{(query ? QUERY_FIELD_TYPES : ['string', 'number', 'boolean']).map((type) => <SelectItem key={type} value={type}>{type.endsWith(' array') ? `array (${type.split(' ')[0]})` : type}</SelectItem>)}</SelectContent></Select></TableCell>
                 </>}
                 <TableCell>
@@ -105,7 +105,7 @@ function RequestFields({ fields, specs = {}, path = false, query = false, onSpec
                   {error && !(spec.required && !field.value.trim()) && <span className="field-value-error block whitespace-normal text-xs text-error" role="status">{error}</span>}
                 </TableCell>
                 {onSpecChange && <TableCell><Input aria-label={`${label} ${index + 1}행 설명`} value={spec.description} onChange={(event) => onSpecChange(field.id, { ...spec, description: event.target.value })} /></TableCell>}
-                <TableCell>
+                <TableCell className="pt-3">
                   <Button
                     variant="ghost"
                     size="icon-xs"
