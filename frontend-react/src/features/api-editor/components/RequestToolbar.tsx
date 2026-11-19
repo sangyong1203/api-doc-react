@@ -55,23 +55,25 @@ export function RequestToolbar({ request, collectionName, folderName, dirty, run
         </div>
       </div>
       <div className="request-url-bar">
-        <Select value={request.method} onValueChange={(method) => onChange({ ...request, method: method as HttpMethod })}>
-          <SelectTrigger className="method-select" aria-label="HTTP 메서드">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {METHODS.map((method) => (
-              <SelectItem key={method} value={method}><HttpMethodBadge method={method} /></SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          className="url-input"
-          aria-label="요청 URL"
-          placeholder="{{baseUrl}}/robots"
-          value={request.url}
-          onChange={(event) => onChange({ ...request, url: event.target.value })}
-        />
+        <div className="request-url-input-group flex h-8 min-w-0 flex-1 items-center overflow-hidden rounded-lg border border-input transition-colors focus-within:border-ring/60 focus-within:ring-2 focus-within:ring-ring/20 dark:bg-input/30">
+          <Select value={request.method} onValueChange={(method) => onChange({ ...request, method: method as HttpMethod })}>
+            <SelectTrigger className="method-select h-full rounded-none border-0 border-r focus-visible:ring-0 dark:bg-transparent" aria-label="HTTP 메서드">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {METHODS.map((method) => (
+                <SelectItem key={method} value={method}><HttpMethodBadge method={method} /></SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            className="url-input h-full rounded-none border-0 focus-visible:ring-0 dark:bg-transparent"
+            aria-label="요청 URL"
+            placeholder="{{baseUrl}}/robots"
+            value={request.url}
+            onChange={(event) => onChange({ ...request, url: event.target.value })}
+          />
+        </div>
         <div className="request-run-controls">
           {running ? (
             <Button className="request-send text-xs" variant="outline" onClick={onCancel}>
