@@ -119,7 +119,7 @@ function RequestFields({ fields, specs = {}, path = false, query = false, onSpec
             )})}
             {fields.length === 0 && (
               <TableRow>
-                <TableCell colSpan={onSpecChange ? 7 : 4}>등록된 항목이 없습니다. 행을 추가해 입력하세요.</TableCell>
+                <TableCell className="request-fields-empty text-muted-foreground" colSpan={onSpecChange ? 7 : 4}>등록된 항목이 없습니다. 행을 추가해 입력하세요.</TableCell>
               </TableRow>
             )}
           </TableBody>
