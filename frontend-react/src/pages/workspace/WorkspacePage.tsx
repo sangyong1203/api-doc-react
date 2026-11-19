@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { Braces, FolderOpen } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { ApiDocumentationDialog } from '@/features/documentation/components/ApiDocumentationDialog'
@@ -91,7 +91,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
   const [requestError, setRequestError] = useState<{ id: string; message: string } | null>(null)
   const [confirmation, setConfirmation] = useState<{
     title: string
-    description: string
+    description: ReactNode
     actionLabel: string
     onConfirm: () => void
   } | null>(null)
@@ -208,7 +208,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
     const dirty = JSON.stringify(target.request) !== JSON.stringify(target.saved)
     if (!confirmed && (dirty || target.execution.status === 'running')) {
       setConfirmation({ title: `${target.request.name} 탭 닫기`,
-        description: `${dirty ? '미저장 변경이 사라집니다. ' : ''}${target.execution.status === 'running' ? '실행 중인 요청을 중단합니다. ' : ''}탭을 닫으시겠습니까?`,
+        description: <>{dirty && <><span className="tab-close-unsaved-warning text-warning">미저장</span>{' 변경이 사라집니다. '}</>}{target.execution.status === 'running' && '실행 중인 요청을 중단합니다. '}탭을 닫으시겠습니까?</>,
         actionLabel: '탭 닫기', onConfirm: () => closeTab(id, true) })
       return
     }

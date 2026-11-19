@@ -254,7 +254,7 @@ export function RequestEditor({ request, onChange, payloadPicker, documentationE
     { value: 'body', label: 'Body', hasData: request.bodyFormat === 'multipart' ? Boolean(request.multipartFields?.some((field) => field.enabled && field.name.trim())) : Boolean(request.body.trim()) || Boolean(request.schema?.body.length) },
     { value: 'headers', label: 'Headers', hasData: request.headers.some((field) => field.enabled && field.name.trim()) },
     { value: 'response', label: 'Response', hasData: Boolean(request.responseFields?.length) || request.errorResponses.length > 0 },
-    { value: 'documentation', label: '문서', hasData: Boolean(request.documentation && Object.values(request.documentation).some((value) => value.trim())) },
+    { value: 'documentation', label: 'Docs', hasData: Boolean(request.documentation && Object.values(request.documentation).some((value) => value.trim())) },
   ]
   function changeSpec(id: string, spec: FieldSpec) {
     const typeChanged = (request.schema?.fields[id]?.type ?? DEFAULT_SPEC.type) !== spec.type
