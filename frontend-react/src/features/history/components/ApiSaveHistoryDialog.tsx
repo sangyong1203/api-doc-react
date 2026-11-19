@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { HttpMethodBadge } from '@/components/HttpMethodBadge'
+import { formatDateTime } from '@/utils/dateTime'
 import type { ApiSaveHistory } from '../types'
 
 type Props = {
@@ -40,7 +41,7 @@ export function ApiSaveHistoryDialog({ apiName, entries, onRestore, onClose }: P
                   onClick={() => setSelectedId(entry.id)}>
                   <div className="save-history-entry-content min-w-0 flex-1 space-y-2">
                     <div className="save-history-entry-heading flex flex-wrap items-center justify-between gap-2">
-                      <time className="save-history-date text-sm" dateTime={entry.savedAt}>{new Date(entry.savedAt).toLocaleString('ko-KR', { hour12: false })}</time>
+                      <time className="save-history-date text-sm" dateTime={entry.savedAt}>{formatDateTime(entry.savedAt)}</time>
                       <span className="save-history-preset text-xs text-muted-foreground">{entry.presetName}</span>
                     </div>
                     <div className="save-history-request flex min-w-0 items-start gap-2">

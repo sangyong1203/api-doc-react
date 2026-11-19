@@ -144,6 +144,7 @@ features/api-editor/
 - 색상·간격·테마는 `styles/globals.css`의 디자인 토큰과 공통 스타일을 사용합니다.
 - 입력·아이콘 버튼에 접근 가능한 이름을 제공하고, 다이얼로그 포커스와 키보드 조작을 확인합니다.
 - 로딩·빈 데이터·오류·미저장 상태를 구분합니다.
+- 화면의 날짜·시간은 `src/utils/dateTime.ts`의 `formatDateTime`을 사용해 로컬 시간 기준 `YYYY-MM-DD HH:mm:ss`로 표시합니다. 저장·통신에는 ISO 원문을 유지합니다.
 
 ### 공통 보기 탭
 
