@@ -23,7 +23,7 @@ function DialogContent({ className, children, ...props }: ComponentProps<typeof 
 }
 
 function DialogTitle({ className, ...props }: ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title className={cn('dialog-title pr-8 text-lg font-semibold', className)} {...props} />
+  return <DialogPrimitive.Title className={cn('dialog-title border-b pr-8 pb-2 text-lg font-semibold', className)} {...props} />
 }
 
 function DialogDescription({ className, ...props }: ComponentProps<typeof DialogPrimitive.Description>) {

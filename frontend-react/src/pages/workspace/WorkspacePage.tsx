@@ -3,6 +3,8 @@ import { Braces, FolderOpen } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { ApiDocumentationDialog } from '@/features/documentation/components/ApiDocumentationDialog'
 import { ApiDocumentationEditor } from '@/features/documentation/components/ApiDocumentationEditor'
+import { ApiSaveHistoryDialog } from '@/features/history/components/ApiSaveHistoryDialog'
+import { copyHistoryRequest, restoreHistoryRequest, type ApiSaveHistory } from '@/features/history/types'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -40,6 +42,8 @@ function copyActiveFields(fields: RequestField[]): Array<Pick<RequestField, 'nam
 
 export function WorkspacePage() {
   const [documentOpen, setDocumentOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyByApi, setHistoryByApi] = useState<Record<string, ApiSaveHistory[]>>({})
   const [collections, setCollections] = useState(SAMPLE_COLLECTIONS)
   const [folders, setFolders] = useState(SAMPLE_FOLDERS)
   const [requests, setRequests] = useState(SAMPLE_REQUESTS)
@@ -144,6 +148,7 @@ export function WorkspacePage() {
     deleteRequestIds.forEach((id) => { clearTimeout(timers.current.get(id)); timers.current.delete(id) })
     setRequests((current) => current.filter((request) => !deleteRequestIds.has(request.id)))
     setPresetsByApi((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !deleteRequestIds.has(id))))
+    setHistoryByApi((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !deleteRequestIds.has(id))))
     const remaining = tabs.filter((tab) => !deleteRequestIds.has(tab.request.id))
     setTabs(remaining)
     if (activeId && deleteRequestIds.has(activeId)) { setActiveId(remaining[0]?.request.id ?? null) }
@@ -270,6 +275,12 @@ export function WorkspacePage() {
     if (!activeTab) { return }
     const error = validateRequest(activeTab.request)
     if (error) { setRequestError({ id: activeTab.request.id, message: error }); return }
+    const entry: ApiSaveHistory = {
+      id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+      presetName: presetsByApi[activeTab.request.id]?.find((preset) => preset.id === activeTab.selectedPresetId)?.name ?? '기본 입력',
+      request: copyHistoryRequest(activeTab.request),
+    }
+    setHistoryByApi((current) => ({ ...current, [activeTab.request.id]: [entry, ...(current[activeTab.request.id] ?? [])] }))
     setRequestError(null)
     updateTab(activeTab.request.id, (tab) => ({ ...tab, saved: tab.request }))
     if (activeTab.selectedPresetId) {
@@ -279,6 +290,19 @@ export function WorkspacePage() {
     }
     setRequests((current) => current.map((request) => request.id === activeTab.request.id
       ? (activeTab.selectedPresetId ? applyPayload(activeTab.request, copyPayload(request)) : activeTab.request) : request))
+  }
+
+  function restoreHistory(entry: ApiSaveHistory, confirmed = false) {
+    if (!activeTab || entry.request.id !== activeTab.request.id) { return }
+    if (!confirmed && JSON.stringify(activeTab.request) !== JSON.stringify(activeTab.saved)) {
+      setConfirmation({ title: '저장 이력 되돌리기', description: '현재 폼의 미저장 변경을 버리고 선택한 저장 이력을 적용하시겠습니까?',
+        actionLabel: '변경 버리고 되돌리기', onConfirm: () => restoreHistory(entry, true) })
+      return
+    }
+    // 저장 원본·다른 세트·실행 결과는 수정하지 않고 현재 폼만 갱신합니다.
+    updateTab(activeTab.request.id, (tab) => ({ ...tab, request: restoreHistoryRequest(tab.request, entry.request) }))
+    setRequestError(null)
+    setHistoryOpen(false)
   }
 
   return (
@@ -309,6 +333,7 @@ export function WorkspacePage() {
                 onChange={(request) => { setRequestError(null); updateTab(request.id, (tab) => ({ ...tab, request })) }}
                 onSave={saveRequest}
                 onDocument={() => setDocumentOpen(true)}
+                onHistory={() => setHistoryOpen(true)}
                 onRun={runSample}
                 onCancel={cancelSample}
               />
@@ -328,6 +353,9 @@ export function WorkspacePage() {
               </div>
               {documentOpen && <ApiDocumentationDialog request={activeTab.request}
                 onClose={() => setDocumentOpen(false)} /> }
+              {historyOpen && <ApiSaveHistoryDialog apiName={activeTab.request.name}
+                entries={historyByApi[activeTab.request.id] ?? []}
+                onRestore={restoreHistory} onClose={() => setHistoryOpen(false)} />}
             </TabsContent>
           ) : (
             <Empty className="workspace-empty">
