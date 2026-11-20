@@ -1,6 +1,6 @@
 # API Doc — React
 
-REST API를 등록·호출·문서화·테스트하고, API별 여러 payload 세트를 재사용하는 도구의 React UI입니다. Electron 기반 Windows PC 앱으로 개발하며 현재는 브라우저에서 샘플 데이터와 메모리 상태로 UI를 확인할 수 있습니다. 실제 파일 저장·개인 DB·API 실행은 후속 구현입니다.
+REST API를 등록·호출·문서화·테스트하고, API별 여러 payload 세트를 재사용하는 도구입니다. Electron Windows 앱과 브라우저 개발 화면에서 같은 React UI를 사용합니다. 현재 데이터와 요청 실행은 메모리·샘플 기반이며 실제 파일 저장·개인 DB·API 실행은 후속 구현입니다.
 
 개발 범위·순서·완료 기준은 [개발 기획](../doc/plan.md), 구현 상태·상세 진행 내용·검증 결과는 [개발 진행 현황](../doc/progress.md)에서 관리합니다. 작업 시 [프로젝트 규칙](../AGENTS.md)을 함께 확인합니다.
 
@@ -23,14 +23,42 @@ Windows PowerShell에서 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`
 | 명령어 | 동작 |
 | --- | --- |
 | `npm run dev` | 개발 서버 실행 |
-| `npm run type-check` | 앱과 Vite 설정의 TypeScript 검사 |
+| `npm run type-check` | React·Vite 설정·Electron의 TypeScript 검사 |
 | `npm run lint` | ESLint 검사 |
 | `npm run build` | 타입 검사 후 `dist/`에 배포 파일 생성 |
 | `npm run preview` | 빌드 결과를 로컬에서 확인 |
+| `npm run desktop:dev` | Electron 코드 컴파일 후 Vite와 PC 앱 함께 실행 |
+| `npm run desktop:build` | Main·Preload를 `dist-electron/`에 컴파일 |
+| `npm run desktop:package` | 전체 빌드 후 Windows x64 실행 폴더 생성 |
 
 린트는 타사 배포 파일 `src/lib/xlsx/XLSX.min.js` 한 파일을 제외하며, 직접 작성한 Excel 모듈과 나머지 프로젝트 코드는 검사합니다.
 
-경로 별칭 `@/`는 `src/`를 가리킵니다. `components.json`에는 shadcn/ui 경로와 스타일 설정을 관리합니다. 위 명령은 React UI 개발용이며 Electron 실행·설치 파일 생성 명령은 아직 제공하지 않습니다.
+경로 별칭 `@/`는 `src/`를 가리킵니다. `components.json`에는 shadcn/ui 경로와 스타일 설정을 관리합니다.
+
+## PC 앱 실행과 패키징
+
+`frontend-react`에서 `npm.cmd run desktop:dev`로 실행합니다. 개발용 Vite는 `127.0.0.1:5176`부터 빈 포트를 사용하고, 앱 종료 시 함께 정리합니다. React 변경은 HMR로 반영하며 Main·Preload를 수정한 경우 개발 명령을 다시 실행합니다.
+
+`npm.cmd run desktop:package` 결과는 `out/APIDOC-win32-x64/APIDOC.exe`입니다. 이 폴더 전체가 있어야 실행할 수 있습니다. 설치 프로그램·서명·자동 업데이트는 후속 범위입니다. 배포본은 내장 화면을 `apidoc://app/`에서 로드하며 Vite 서버나 사용자 Node 설치가 필요하지 않습니다.
+
+개발용 개인 데이터 경로는 `%APPDATA%/APIDOC Development`, 패키징 앱은 Electron의 `userData` 경로를 사용합니다. 현재는 DB·초안 영구 저장을 연결하지 않았습니다. 앱을 다시 실행하면 샘플 상태로 시작합니다.
+
+같은 프로필의 앱을 중복 실행하면 기존 창을 활성화합니다. 종료 시 숨겨진 공간의 API 편집·열린 폼의 미저장 내용·실행 중인 요청을 확인합니다. 취소가 기본 선택이며 취소하면 편집을 유지합니다. 브라우저 개발 화면에서도 새로고침·창 닫기 전에 미저장 상태를 확인합니다.
+
+### PC 앱 자동 검증
+
+전용 테스트 앱을 아래처럼 실행한 뒤 다른 PowerShell에서 검증합니다. 검증은 샘플 값을 수정하고 마지막에 앱을 종료하므로 실제 작업에 사용하는 앱과 함께 실행하지 않습니다.
+
+```powershell
+# frontend-react에서 패키징 후 실행
+Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+& .\out\APIDOC-win32-x64\APIDOC.exe --remote-debugging-port=9333 --remote-debugging-address=127.0.0.1 --inspect=127.0.0.1:9334
+
+# 다른 PowerShell의 frontend-react에서 실행
+node electron/smoke.mjs
+```
+
+앱 화면·내장 버전·Renderer 권한 격리·CSP·미저장 종료 취소/확인·숨겨진 작업 공간·편집 폼·중복 실행을 확인합니다. 네이티브 확인창의 선택 응답만 테스트에서 대체하며 실제 Windows 확인창의 표시·포커스·Escape 동작은 별도 화면 검증 대상입니다. 테스트용 디버거 옵션은 일상 실행 명령에는 사용하지 않습니다.
 
 ## PC 앱과 저장 방향
 
@@ -83,6 +111,13 @@ npx shadcn@latest apply b1sAmVzcG --only theme,font --yes
 ```text
 frontend-react/
 ├── README.md
+├── electron/                       # 앱 수명 주기·제한된 연결·실행 검증
+│   ├── main.cts                    # 창·종료·메뉴·내장 UI 프로토콜
+│   ├── preload.cts                 # 종료 상태 확인용 contextBridge
+│   ├── dev.mjs                     # Vite와 개발 앱 실행·정리
+│   └── smoke.mjs                   # 패키징 앱 통합 검증
+├── forge.config.cjs                # Windows 실행 폴더 패키징
+├── tsconfig.electron.json          # Main·Preload 타입 검사·컴파일
 ├── public/                         # 경로 그대로 제공할 정적 파일
 └── src/
     ├── main.tsx                    # React 마운트와 전역 스타일 진입점

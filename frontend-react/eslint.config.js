@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'src/lib/xlsx/XLSX.min.js'] },
+  { ignores: ['dist', 'dist-electron', 'out', 'node_modules', 'src/lib/xlsx/XLSX.min.js'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -23,4 +23,5 @@ export default tseslint.config(
     },
   },
   { files: ['*.config.{js,ts}'], languageOptions: { globals: globals.node } },
+  { files: ['electron/**/*.{cts,mjs}', 'forge.config.cjs'], languageOptions: { globals: globals.node }, rules: { curly: ['error', 'all'] } },
 )

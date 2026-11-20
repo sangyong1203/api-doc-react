@@ -25,6 +25,7 @@ import { EnvironmentPicker } from '@/features/environments/components/Environmen
 import { createSampleResponse, SAMPLE_COLLECTIONS, SAMPLE_FOLDERS, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
 import type { RequestField, SampleRequest, Workspace, WorkspaceTab } from '@/features/workspace/types'
 import '@/styles/workspace.css'
+import { useAppCloseLifecycle, useAppCloseProtection } from '@/hooks/useAppCloseProtection'
 
 function createInitialPreset(request: SampleRequest): PayloadPreset {
   return { id: `${request.id}-preset-1`, name: '입력 세트 1', description: '', values: copyPayload(request) }
@@ -44,6 +45,7 @@ function copyActiveFields(fields: RequestField[]): Array<Pick<RequestField, 'nam
 const INITIAL_WORKSPACE: Workspace = { id: 'robot-workspace', name: 'Robot workspace' }
 
 export function WorkspacePage() {
+  useAppCloseLifecycle()
   const [workspaces, setWorkspaces] = useState<Workspace[]>([INITIAL_WORKSPACE])
   const [selectedId, setSelectedId] = useState(INITIAL_WORKSPACE.id)
 
@@ -109,6 +111,10 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
   const affectedTabs = tabs.filter((tab) => deleteRequestIds.has(tab.request.id))
   const dirtyDeleteCount = affectedTabs.filter((tab) => JSON.stringify(tab.request) !== JSON.stringify(tab.saved)).length
   const runningDeleteCount = affectedTabs.filter((tab) => tab.execution.status === 'running').length
+  useAppCloseProtection(
+    tabs.some((tab) => JSON.stringify(tab.request) !== JSON.stringify(tab.saved)),
+    tabs.some((tab) => tab.execution.status === 'running'),
+  )
 
   useEffect(() => {
     const pendingTimers = timers.current

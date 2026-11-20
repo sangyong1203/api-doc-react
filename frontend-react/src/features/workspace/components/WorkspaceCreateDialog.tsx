@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useAppCloseProtection } from '@/hooks/useAppCloseProtection'
 
 type Props = {
   onCreate: (name: string) => string | null
@@ -13,13 +14,14 @@ export function WorkspaceCreateDialog({ onCreate, onClose }: Props) {
   const errorId = useId()
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  useAppCloseProtection(name !== '')
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) { onClose() } }}>
       <DialogContent className="workspace-create-dialog">
         <DialogTitle>새 작업 공간</DialogTitle>
         <DialogDescription className="workspace-create-description text-xs">
-          * 이름을 입력하면 빈 작업 공간을 만듭니다. 현재는 메모리에만 보관하며 새로고침하면 초기화됩니다. 실제 작업 폴더 연결은 에이전트 개발 시 제공됩니다.
+          * 이름을 입력하면 빈 작업 공간을 만듭니다. 현재는 메모리에만 보관하며 화면을 다시 불러오거나 앱을 종료하면 초기화됩니다. 실제 작업 폴더 연결은 후속 작업에서 제공됩니다.
         </DialogDescription>
         <form className="workspace-create-form flex flex-col gap-4" onSubmit={(event) => {
           event.preventDefault()

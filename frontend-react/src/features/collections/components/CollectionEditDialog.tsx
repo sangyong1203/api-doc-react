@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { HttpMethod, WorkspaceCollection, WorkspaceFolder } from '@/features/workspace/types'
 import type { CollectionDialogTarget, CollectionFormValues } from '../types'
+import { useAppCloseProtection } from '@/hooks/useAppCloseProtection'
 
 type CollectionEditDialogProps = {
   target: CollectionDialogTarget
@@ -25,6 +26,9 @@ export function CollectionEditDialog({ target, collections, folders, onClose, on
   const [error, setError] = useState<string | null>(null)
   const errorId = useId()
   const kindLabel = target.kind === 'collection' ? '컬렉션' : target.kind === 'folder' ? '폴더' : 'API'
+  useAppCloseProtection(name !== (entity?.name ?? '')
+    || (target.kind === 'api' && (collectionId !== target.collectionId || folderId !== target.folderId
+      || method !== (target.request?.method ?? 'GET') || url !== (target.request?.url ?? ''))))
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) { onClose() } }}>

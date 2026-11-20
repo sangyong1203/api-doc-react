@@ -2,6 +2,8 @@
 /frontend-sample/
 node_modules/
 dist/
+dist-electron/
+out/
 *.tsbuildinfo
 .env
 .env.*

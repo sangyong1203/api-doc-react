@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { PayloadPreset } from '../types'
+import { useAppCloseProtection } from '@/hooks/useAppCloseProtection'
 
 type Props = {
   presets: PayloadPreset[]
@@ -23,6 +24,7 @@ export function PayloadPicker({ presets, selectedId, defaultId, onSelect, onDefa
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const options = presets
+  useAppCloseProtection(Boolean(editingId && name !== presets.find((preset) => preset.id === editingId)?.name))
 
   function rename() {
     const trimmed = name.trim()

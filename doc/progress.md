@@ -26,7 +26,7 @@
 | --- | --- | --- | --- |
 | 01 | 기술 설계 및 개발 기반 | 진행 중 | UI 개발에 필요한 항목부터 진행 |
 | 12 | UI 구조 및 화면 흐름 선행 구현 | 진행 중 | WorkspacePage 1차 UI 구현; 실제 저장·호출 제외 |
-| 02 | PC 앱 기반 및 작업 공간 | 진행 중 | [PC 앱 설계](desktop-design.md) 방향 확정; 실제 앱·DB 구현 전 |
+| 02 | PC 앱 기반 및 작업 공간 | 진행 중 | Electron 실행·패키징·종료 확인의 자동 검증과 사용자 직접 확인 완료. 파일·DB 연동은 후속 |
 | 03 | API 등록·편집·삭제 | 미착수 | 02 이후 |
 | 04 | 환경 설정 및 변수 | 미착수 | 03과 연계 |
 | 05 | REST API 호출 | 미착수 | 02~04 이후 |
@@ -63,7 +63,7 @@
 
 상태: **진행 중**
 
-UI 도입 완료: Tailwind CSS 4.3.5·Lucide React 1.72.0·React Router 7.18.5·CodeMirror 6.0.2. UI 상태는 React 기본 상태 사용. PC 앱은 Electron, 개인 DB는 내장 node:sqlite로 확정; 정확한 Electron 버전·패키징·앱 내부 검증 라이브러리는 도입 전 결정
+UI 도입 완료: Tailwind CSS 4.3.5·Lucide React 1.72.0·React Router 7.18.5·CodeMirror 6.0.2. UI 상태는 React 기본 상태 사용. PC 앱은 Electron 45.4.1·Electron Forge 8.0.1을 도입하고 내장 Node 24.22.3 확인. 개인 DB는 내장 node:sqlite로 확정; 앱 내부 검증 라이브러리·설치 프로그램 생성 도구는 해당 기능 단계에서 결정
 
 #### 01.05 React 개발 환경 구성
 
@@ -155,15 +155,25 @@ shadcn 입력·선택·체크박스·표·탭·배지로 구성하며 요청 입
 
 #### 02.01 PC 앱 실행·종료·창 관리
 
-상태: **미착수**
+상태: **완료**
 
-01.09 이후 기존 React UI를 Electron 안정판에 연결. 창 닫기·앱 종료 시 초안 보존과 미저장 확인, 개발 실행과 패키징 실행 모두 확인
+Electron 45.4.1·Electron Forge 8.0.1을 고정해 `frontend-react/electron/`의 Main·Preload, 개발용 Vite 실행기, TypeScript CJS 컴파일과 Windows x64 패키징 구성. 기존 React Router를 유지하고 배포 화면은 안전한 표준 프로토콜 `apidoc://app/`에서 내장 dist만 제공. 개발 모드는 127.0.0.1의 Vite를 사용하며 앱 종료 시 서버를 정리한다. 배포본은 Vite 서버·사용자 Node 설치 없이 실행한다.
+
+- 단일 인스턴스 잠금, 재실행 시 기존 창 표시·복원·포커스, 파일 메뉴·Alt+F4·앱 종료 요청을 같은 흐름으로 처리.
+- 종료 요청마다 제한된 Preload IPC로 최신 상태 확인. 모든 작업 공간의 API 탭, 환경 설정·컬렉션/API 편집·새 공간 생성·세트 이름 편집 폼을 집계하며 실행 중 요청도 확인. 취소 기본 선택. 취소 시 메모리 편집을 유지하고 재실행 후 영구 초안 복원은 02.07에서 연결.
+- 무응답 화면은 5초 후 별도 종료 확인. IPC 응답은 요청 ID·호출 WebContents·주 프레임·화면 주소·boolean 형식을 검증. Renderer의 Node 접근은 차단하고 contextIsolation·sandbox·CSP·외부 탐색/새 창/권한 제한 적용. 실제 파일·DB API는 아직 제공하지 않음.
+- `npm.cmd run type-check`, `npm.cmd run lint`, `npm.cmd run desktop:package` 통과. `out/APIDOC-win32-x64/APIDOC.exe` 생성·실행 및 Renderer 화면 캡처 확인. 기존 대용량 번들 경고 유지. 요청·이력 회귀 테스트 24건과 저장 포맷 55건 통과.
+- 실제 앱을 대상으로 `electron/smoke.mjs`의 로컬 디버거 자동 검증: 내장 버전, UI 로드, Renderer 격리, CSP, 누락 자원 404, 새 창 차단, 실행 중 요청·API 편집·환경/컬렉션 초안의 종료 취소·입력 보존, 숨겨진 공간, 중복 실행, 확인 후 종료 통과. 네이티브 확인창의 선택 응답만 테스트에서 대체해 분기 검증.
+- 개발 실행에서도 Vite UI·Preload·미저장 앱 종료 취소·값 유지와 편집 복원 후 깨끗한 종료 및 개발 프로세스 종료 확인.
+- 2026-11-20 사용자 직접 검증: 수정하지 않은 상태에서 X 버튼으로 바로 종료되는 동작 확인. 미저장 상태의 종료 확인창과 Escape 취소·편집 유지 확인 방법을 안내한 뒤 사용자가 정상 동작을 확인함. 자동 검증 및 사용자 직접 확인을 근거로 02.01 완료 처리. 파일·DB 연동과 재실행 후 초안 복원은 별도 기능으로 유지.
 
 #### 02.02 Renderer·Preload·내부 기능 IPC 계약
 
 상태: **진행 중**
 
 [PC 앱 설계](desktop-design.md)에 역할과 작업 공간 핸들 기준 정의. 구체 타입·실제 구현·검증 전까지 미완료
+
+02.01에서 종료 확인용 타입·contextBridge·정리 가능한 구독과 nonce 응답을 구현·검증. 작업 공간·파일·DB·실제 요청 실행 계약은 후속 작업으로 유지.
 
 #### 02.03 IPC 보안과 파일 접근 범위
 

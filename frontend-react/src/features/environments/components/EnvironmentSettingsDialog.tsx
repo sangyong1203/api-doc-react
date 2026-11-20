@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { RequestField } from '@/features/workspace/types'
 import type { Environment } from '../types'
+import { useAppCloseProtection } from '@/hooks/useAppCloseProtection'
 
 type EnvironmentSettingsDialogProps = {
   environments: Environment[]
@@ -26,6 +27,7 @@ export function EnvironmentSettingsDialog({ environments, selectedId, onSave, on
   const errorId = useId()
   const active = drafts.find((environment) => environment.id === editingId)
   const dirty = JSON.stringify(drafts) !== JSON.stringify(environments)
+  useAppCloseProtection(dirty)
   const deleteTarget = pendingAction?.kind === 'delete' ? drafts.find((environment) => environment.id === pendingAction.id) : undefined
 
   function closeSettings() {
