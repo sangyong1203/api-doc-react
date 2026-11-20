@@ -171,15 +171,21 @@ Electron 45.4.1·Electron Forge 8.0.1을 고정해 `frontend-react/electron/`의
 
 상태: **진행 중**
 
-[PC 앱 설계](desktop-design.md)에 역할과 작업 공간 핸들 기준 정의. 구체 타입·실제 구현·검증 전까지 미완료
+[IPC 계약](ipc-contract.md)과 `src/types/desktopData.ts`에 공통 requestId·성공/오류 결과, 공유 JSON 원문/hash·snapshot, 로컬 폴더 ID와 문서 수명 범위의 핸들, 저장 operationId·기대 revision·상태 조회, 개인 설정·명세/세트 초안·복구 후보·저장 이력 조회 타입 정의. 취소·파일 저장 성공/개인 이력 실패·결과 불명확 상태를 구분하고 자동 재전송을 금지하는 기준 작성.
 
-02.01에서 종료 확인용 타입·contextBridge·정리 가능한 구독과 nonce 응답을 구현·검증. 작업 공간·파일·DB·실제 요청 실행 계약은 후속 작업으로 유지.
+후속 데이터 API는 명세용 타입으로만 두고 실제 DesktopBridge에는 연결하지 않음. 종료 확인용 제한된 contextBridge와 nonce 응답은 계속 사용하며 파일·개인 JSON의 런타임 검증과 서비스 처리·실제 IPC 왕복은 해당 연동 단계에서 진행. 실제 HTTP 요청 실행·업로드 계약은 05 단계에서 정의한다. 데이터 연동 완료 기준이 남아 진행 중 유지.
+
+2026-11-20 타입 검사·린트·IPC 보안 테스트 5건 통과. 표준 출력 폴더는 실행 중 앱이 점유해 패키징 실패했으나 기존 앱을 종료하지 않고 Forge API로 `out/ipc-verification/APIDOC-win32-x64`에 별도 패키징 성공. 공식 Electron의 `--user-data-dir`로 임시 테스트 프로필을 분리하고 Main에서 실제 userData 경로 확인. 해당 Windows 앱에서 기존 종료·격리·CSP·미저장·숨겨진 공간 회귀와 미구현 데이터 API 미노출 검증 통과.
+
+검증 스크립트의 두 번째 실행에서 ELECTRON_RUN_AS_NODE를 빈 문자열로 넘기던 부분을 키 삭제로 수정. 두 번째 프로세스의 정상 종료뿐 아니라 최소화한 기존 창의 실제 복원까지 확인하도록 강화. 검증 앱 경로·프로필·디버거 포트를 명시할 수 있게 하고 새 임시 프로필의 앱에서 통과 확인. 사용자 작업용 앱은 종료하지 않음.
 
 #### 02.03 IPC 보안과 파일 접근 범위
 
 상태: **진행 중**
 
-[PC 앱 설계](desktop-design.md)의 contextIsolation·sandbox·제한된 API·경로/링크 검증 기준. Windows 경로 경합·junction 및 부정 호출 검증 전까지 미완료
+[IPC 계약](ipc-contract.md)에 소유 WebContents·주 프레임·URL, 고정 채널·envelope·ID·크기·문서 관계, 핸들 소유권, Main의 ID 기반 경로 조립, 실제 파일/링크·Windows 경합 확인 순서를 정의.
+
+`electron/ipc-security.cts`의 호출자·URL·종료 상태 검증을 기존 종료 IPC와 내장 화면 탐색 검사에 적용. 배포 유사 host·포트·자격 증명 URL, 다른 개발 origin·잘못된 개발 설정, 같은 URL의 다른 창/iframe, null/분리된 프레임, 비정상 종료 payload를 거부하는 자동 테스트 5건 통과. 단순 타입과 URL 검증을 파일 경계 검증 완료로 간주하지 않음. 실제 핸들 레지스트리·파일 접근·junction/경합은 02.04~02.05 구현과 함께 검증해야 하므로 진행 중 유지.
 
 #### 02.04 작업 폴더 생성·열기·전환
 

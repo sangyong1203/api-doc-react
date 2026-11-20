@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { AppCloseState } from '../src/types/desktop.js'
+import { isAppCloseState, isTrustedAppUrl, isTrustedIpcSender } from './ipc-security.cjs'
 
 const APP_ORIGIN = 'apidoc://app'
 protocol.registerSchemesAsPrivileged([{ scheme: 'apidoc', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
@@ -33,10 +34,7 @@ function getDevUrl(): string | null {
 const devUrl = getDevUrl()
 
 function isAppUrl(value: string): boolean {
-  try {
-    const url = new URL(value)
-    return devUrl ? url.origin === new URL(devUrl).origin : url.protocol === 'apidoc:' && url.hostname === 'app' && !url.port && !url.username && !url.password
-  } catch { return false }
+  return isTrustedAppUrl(value, devUrl)
 }
 
 function registerAppProtocol() {
@@ -140,11 +138,9 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     registerAppProtocol()
     ipcMain.on('app:close-state', (event, requestId: unknown, state: unknown) => {
-      if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame
-        || !isAppUrl(event.senderFrame.url) || requestId !== pendingClose?.id || !state || typeof state !== 'object') { return }
-      const value = state as Record<string, unknown>
-      if (typeof value.dirty !== 'boolean' || typeof value.running !== 'boolean' || Object.keys(value).some((key) => key !== 'dirty' && key !== 'running')) { return }
-      pendingClose?.resolve({ dirty: value.dirty, running: value.running })
+      if (!isTrustedIpcSender(event, mainWindow?.webContents ?? null, devUrl)
+        || typeof requestId !== 'string' || requestId !== pendingClose?.id || !isAppCloseState(state)) { return }
+      pendingClose?.resolve({ dirty: state.dirty, running: state.running })
     })
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       { label: '파일', submenu: [{ label: '종료', accelerator: 'Alt+F4', click: () => app.quit() }] },

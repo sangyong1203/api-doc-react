@@ -16,6 +16,7 @@
     "build": "npm run type-check && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "desktop:build": "tsc -p tsconfig.electron.json --noEmit false",
+    "desktop:test": "npm run desktop:build && node --test electron/ipc-security.test.mjs",
     "desktop:dev": "npm run desktop:build && node electron/dev.mjs",
     "desktop:package": "npm run build && npm run desktop:build && electron-forge package --platform=win32 --arch=x64"
   },

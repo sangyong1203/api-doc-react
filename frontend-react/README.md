@@ -29,6 +29,7 @@ Windows PowerShell에서 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`
 | `npm run preview` | 빌드 결과를 로컬에서 확인 |
 | `npm run desktop:dev` | Electron 코드 컴파일 후 Vite와 PC 앱 함께 실행 |
 | `npm run desktop:build` | Main·Preload를 `dist-electron/`에 컴파일 |
+| `npm run desktop:test` | Electron 코드 컴파일 후 IPC 호출자·입력 보안 테스트 |
 | `npm run desktop:package` | 전체 빌드 후 Windows x64 실행 폴더 생성 |
 
 린트는 타사 배포 파일 `src/lib/xlsx/XLSX.min.js` 한 파일을 제외하며, 직접 작성한 Excel 모듈과 나머지 프로젝트 코드는 검사합니다.
@@ -39,7 +40,7 @@ Windows PowerShell에서 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`
 
 `frontend-react`에서 `npm.cmd run desktop:dev`로 실행합니다. 개발용 Vite는 `127.0.0.1:5176`부터 빈 포트를 사용하고, 앱 종료 시 함께 정리합니다. React 변경은 HMR로 반영하며 Main·Preload를 수정한 경우 개발 명령을 다시 실행합니다.
 
-`npm.cmd run desktop:package` 결과는 `out/APIDOC-win32-x64/APIDOC.exe`입니다. 이 폴더 전체가 있어야 실행할 수 있습니다. 설치 프로그램·서명·자동 업데이트는 후속 범위입니다. 배포본은 내장 화면을 `apidoc://app/`에서 로드하며 Vite 서버나 사용자 Node 설치가 필요하지 않습니다.
+`npm.cmd run desktop:package` 결과는 `out/APIDOC-win32-x64/APIDOC.exe`입니다. 패키징 전에는 이 폴더에서 실행 중인 앱을 종료해야 파일 점유 오류를 피할 수 있습니다. 이 폴더 전체가 있어야 실행할 수 있습니다. 설치 프로그램·서명·자동 업데이트는 후속 범위입니다. 배포본은 내장 화면을 `apidoc://app/`에서 로드하며 Vite 서버나 사용자 Node 설치가 필요하지 않습니다.
 
 개발용 개인 데이터 경로는 `%APPDATA%/APIDOC Development`, 패키징 앱은 Electron의 `userData` 경로를 사용합니다. 현재는 DB·초안 영구 저장을 연결하지 않았습니다. 앱을 다시 실행하면 샘플 상태로 시작합니다.
 
@@ -47,18 +48,24 @@ Windows PowerShell에서 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`
 
 ### PC 앱 자동 검증
 
-전용 테스트 앱을 아래처럼 실행한 뒤 다른 PowerShell에서 검증합니다. 검증은 샘플 값을 수정하고 마지막에 앱을 종료하므로 실제 작업에 사용하는 앱과 함께 실행하지 않습니다.
+전용 테스트 앱을 아래처럼 실행한 뒤 다른 PowerShell에서 검증합니다. 검증은 샘플 값을 수정하고 마지막에 앱을 종료하므로 임시 테스트 프로필을 사용합니다. 두 PowerShell에서 같은 테스트 프로필 경로를 지정해야 중복 실행도 같은 프로필을 사용합니다.
 
 ```powershell
 # frontend-react에서 패키징 후 실행
 Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
-& .\out\APIDOC-win32-x64\APIDOC.exe --remote-debugging-port=9333 --remote-debugging-address=127.0.0.1 --inspect=127.0.0.1:9334
+$env:APIDOC_TEST_USER_DATA_DIR = Join-Path $env:TEMP 'apidoc-desktop-smoke-profile'
+& .\out\APIDOC-win32-x64\APIDOC.exe --user-data-dir=$env:APIDOC_TEST_USER_DATA_DIR --remote-debugging-port=9333 --remote-debugging-address=127.0.0.1 --inspect=127.0.0.1:9334
 
 # 다른 PowerShell의 frontend-react에서 실행
+$env:APIDOC_TEST_USER_DATA_DIR = Join-Path $env:TEMP 'apidoc-desktop-smoke-profile'
 node electron/smoke.mjs
 ```
 
 앱 화면·내장 버전·Renderer 권한 격리·CSP·미저장 종료 취소/확인·숨겨진 작업 공간·편집 폼·중복 실행을 확인합니다. 네이티브 확인창의 선택 응답만 테스트에서 대체하며 실제 Windows 확인창의 표시·포커스·Escape 동작은 별도 화면 검증 대상입니다. 테스트용 디버거 옵션은 일상 실행 명령에는 사용하지 않습니다.
+
+다른 경로에 패키징한 앱을 검증할 때는 `APIDOC_TEST_EXECUTABLE`에 해당 실행 파일의 절대 경로를 지정합니다. 포트를 바꿨다면 `APIDOC_RENDERER_PORT`·`APIDOC_MAIN_PORT`도 실제 디버거 포트에 맞춥니다. 중복 실행 검증은 최소화한 기존 창이 복원되는지까지 확인합니다.
+
+IPC의 고정 메서드·공통 오류·작업 공간 핸들·파일/DB 접근 경계는 [IPC 계약](../doc/ipc-contract.md)을 따릅니다. `src/types/desktopData.ts`의 데이터 API는 후속 구현용 명세이며 현재 화면에 노출하지 않습니다. 실제 `DesktopBridge`는 종료 확인과 버전 조회만 제공합니다. `npm.cmd run desktop:test`로 배포/개발 URL, 다른 창·iframe·분리된 프레임, 잘못된 종료 상태의 거부를 검사합니다.
 
 ## PC 앱과 저장 방향
 

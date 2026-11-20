@@ -46,6 +46,7 @@ try {
   const versions = await renderer.evaluate('window.apidocDesktop?.versions')
   assert.equal(versions.electron, '45.4.1')
   assert.equal(versions.node, '24.22.3')
+  assert.deepEqual(await renderer.evaluate('Object.keys(window.apidocDesktop).sort()'), ['onCloseRequested', 'respondToClose', 'versions'])
   assert.deepEqual(await renderer.evaluate('({url:location.href,node:typeof process,require:typeof require,toolbar:!!document.querySelector(".request-toolbar")})'),
     { url: 'apidoc://app/', node: 'undefined', require: 'undefined', toolbar: true })
   const security = await main.evaluate(`(() => { const w=process.mainModule.require('electron').BrowserWindow.getAllWindows()[0]; const p=w.webContents.getLastWebPreferences(); return {sandbox:p.sandbox,isolated:p.contextIsolation,node:p.nodeIntegration} })()`)
@@ -118,9 +119,23 @@ try {
   await closeAndCancel()
   assert.match(await main.evaluate('desktopSmoke.dialogs.at(-1).detail'), /미저장/)
 
-  const second = spawn(path.resolve('out/APIDOC-win32-x64/APIDOC.exe'), [], { stdio: 'ignore', env: { ...process.env, ELECTRON_RUN_AS_NODE: '' } })
-  await new Promise((resolve, reject) => { second.once('exit', (code) => code === 0 ? resolve() : reject(new Error(`중복 실행 종료 코드 ${code}`))); second.once('error', reject) })
+  const secondExecutable = process.env.APIDOC_TEST_EXECUTABLE ?? path.resolve('out/APIDOC-win32-x64/APIDOC.exe')
+  const secondArgs = process.env.APIDOC_TEST_USER_DATA_DIR ? [`--user-data-dir=${process.env.APIDOC_TEST_USER_DATA_DIR}`] : []
+  const secondEnv = { ...process.env }
+  // 빈 문자열도 Electron의 Node 모드를 활성화할 수 있으므로 키 자체를 제거합니다.
+  delete secondEnv.ELECTRON_RUN_AS_NODE
+  await main.evaluate(`process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].minimize();true`)
+  await delay(100)
+  assert.equal(await main.evaluate(`process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].isMinimized()`), true)
+  const second = spawn(secondExecutable, secondArgs, { stdio: 'ignore', env: secondEnv })
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => { second.kill(); reject(new Error('중복 실행 프로세스가 종료되지 않았습니다.')) }, 5000)
+    second.once('exit', (code) => { clearTimeout(timeout); if (code === 0) { resolve() } else { reject(new Error(`중복 실행 종료 코드 ${code}`)) } })
+    second.once('error', (error) => { clearTimeout(timeout); reject(error) })
+  })
+  await delay(100)
   assert.equal(await main.evaluate(`process.mainModule.require('electron').BrowserWindow.getAllWindows().length`), 1)
+  assert.equal(await main.evaluate(`process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].isMinimized()`), false)
 
   // 최종 종료는 취소 분기와 동일한 실제 IPC를 사용하며 확인 응답만 1로 바꿉니다.
   await main.evaluate(`desktopSmoke.response=1;setImmediate(()=>process.mainModule.require('electron').app.quit());true`)
