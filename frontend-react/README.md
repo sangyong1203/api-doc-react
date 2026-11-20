@@ -1,6 +1,6 @@
 # API Doc — React
 
-REST API를 등록·호출·문서화·테스트하고, API별 여러 payload 세트를 재사용하는 웹 애플리케이션입니다. 모크 데이터를 생성하여 등록 API를 반복 호출하는 대량 등록 기능도 제공합니다.
+REST API를 등록·호출·문서화·테스트하고, API별 여러 payload 세트를 재사용하는 도구의 React UI입니다. Electron 기반 Windows PC 앱으로 개발하며 현재는 브라우저에서 샘플 데이터와 메모리 상태로 UI를 확인할 수 있습니다. 실제 파일 저장·개인 DB·API 실행은 후속 구현입니다.
 
 개발 범위·순서·진행 상태는 [개발 기획](../doc/plan.md)을 기준으로 관리합니다. 작업 시 [프로젝트 규칙](../AGENTS.md)을 함께 확인합니다.
 
@@ -26,7 +26,15 @@ npm run dev
 | `npm run build` | 타입 검사 후 `dist/`에 배포 파일 생성 |
 | `npm run preview` | 빌드 결과를 로컬에서 확인 |
 
-경로 별칭 `@/`는 `src/`를 가리킵니다. `components.json`에는 shadcn/ui 경로와 스타일 설정을 관리합니다. 운영 호스팅에서는 React Router 경로를 직접 열거나 새로고침해도 `index.html`로 연결되도록 설정합니다.
+경로 별칭 `@/`는 `src/`를 가리킵니다. `components.json`에는 shadcn/ui 경로와 스타일 설정을 관리합니다. 위 명령은 React UI 개발용이며 Electron 실행·설치 파일 생성 명령은 아직 제공하지 않습니다.
+
+## PC 앱과 저장 방향
+
+- 기존 React UI를 Electron 독립 창에 연결하고 파일·네트워크·DB 처리는 제한된 Preload/IPC를 통해 앱 내부에서 수행합니다.
+- API 명세·문서·입력 세트·공유 환경은 작업 폴더의 JSON 파일에 저장하여 외부 Git 도구로 공유합니다.
+- 개인 설정·최근 작업 공간·초안·저장 이력은 앱 사용자 데이터 폴더의 SQLite에 내장 `node:sqlite`로 보관합니다. 인증 비밀값과 업로드 파일 실체는 기본 메모리로 관리합니다.
+- 개발 Node.js는 24 최신 패치로 전환할 예정입니다. 현재 위 설치 절차와 버전 설정은 기존 검증 환경을 나타내며 아직 업그레이드하지 않았습니다.
+- Electron/SQLite 설치본 검증·DB 마이그레이션·백업·이력 보관 정책은 후속 작업입니다. 상세 기준은 [PC 앱 설계](../doc/desktop-design.md)와 [저장 설계](../doc/storage-design.md)를 따릅니다.
 
 ## 저장 포맷 검증
 
@@ -83,7 +91,6 @@ frontend-react/
     │       └── WorkspacePage.tsx   # 트리·탭·편집·결과 영역 조합
     ├── features/
     │   ├── workspace/              # 작업 폴더·열린 탭·저장 및 외부 변경
-    │   ├── agent-connection/       # 설치 안내·연결 승인·연결 상태
     │   ├── collections/            # 컬렉션·폴더·API 목록 관리
     │   ├── api-editor/             # URL·params·headers·body 편집
     │   ├── request-runner/         # 실행·취소·응답 결과 표시
@@ -98,8 +105,7 @@ frontend-react/
     │   ├── ui/                     # shadcn/ui 기본 컴포넌트
     │   └── layout/                 # 여러 화면에서 재사용하는 레이아웃
     ├── lib/
-    │   ├── agent/                  # 공통 에이전트 연결·요청 전달
-    │   ├── storage/                # IndexedDB 접근과 버전 변경 처리
+    │   ├── storage/                # 개인 저장 관련 IPC 호출과 결과 처리
     │   └── utils.ts                # shadcn/ui 클래스 조합 등 공통 기반
     ├── hooks/                      # 여러 기능에서 재사용하는 React 로직
     ├── stores/                     # 여러 기능에서 공유하는 상태
@@ -141,7 +147,7 @@ features/api-editor/
 | `pages/` | 기능 모듈을 조합하는 화면과 화면 전용 배치 |
 | `features/` | 기능별 UI·상태·서비스·변환 로직 |
 | `components/` | 여러 기능에서 재사용하는 UI |
-| `lib/` | 에이전트·IndexedDB 등 외부 기능 연결과 라이브러리 설정 |
+| `lib/` | 공통 IPC 호출 등 외부 기능 연결과 라이브러리 설정. 파일·SQL 직접 접근은 앱 내부 계층 담당 |
 | `types/`, `utils/` | 여러 기능이 공통으로 쓰는 도메인 정의·순수 함수 |
 
 - 기본 의존 방향은 `app/pages → features → 공통 코드`입니다. 공통 UI와 기반 코드는 특정 기능이나 페이지를 가져오지 않습니다.
