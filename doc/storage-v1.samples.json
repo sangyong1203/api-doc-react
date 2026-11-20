@@ -1,0 +1,2460 @@
+{
+  "valid": [
+    {
+      "name": "main",
+      "description": "명세·문서·복수 세트·중복 Query/Headers/multipart·중첩 객체와 배열·비밀 참조·파일 명세",
+      "files": {
+        "workspace.json": {
+          "formatVersion": 1,
+          "id": "00000001-0000-4000-8000-000000000000",
+          "name": "Robot workspace",
+          "collections": [
+            {
+              "id": "00000002-0000-4000-8000-000000000000",
+              "name": "Robot API",
+              "apiIds": [
+                "0000000a-0000-4000-8000-000000000000"
+              ],
+              "folders": [
+                {
+                  "id": "00000003-0000-4000-8000-000000000000",
+                  "name": "파일",
+                  "apiIds": [
+                    "0000000b-0000-4000-8000-000000000000"
+                  ]
+                },
+                {
+                  "id": "00000004-0000-4000-8000-000000000000",
+                  "name": "빈 폴더",
+                  "apiIds": []
+                }
+              ]
+            }
+          ],
+          "environmentIds": [
+            "00000014-0000-4000-8000-000000000000"
+          ]
+        },
+        "apis/0000000a-0000-4000-8000-000000000000.json": {
+          "formatVersion": 1,
+          "id": "0000000a-0000-4000-8000-000000000000",
+          "name": "로봇 수정",
+          "method": "PATCH",
+          "url": "{{baseUrl}}/robots/{{robotId}}",
+          "request": {
+            "path": [
+              {
+                "id": "00000064-0000-4000-8000-000000000000",
+                "name": "robotId",
+                "type": "string",
+                "required": true,
+                "description": ""
+              }
+            ],
+            "query": [
+              {
+                "id": "00000065-0000-4000-8000-000000000000",
+                "name": "ids",
+                "type": "number array",
+                "required": true,
+                "description": "",
+                "arrayFormat": "repeat"
+              },
+              {
+                "id": "00000066-0000-4000-8000-000000000000",
+                "name": "ids",
+                "type": "number array",
+                "required": false,
+                "description": "",
+                "arrayFormat": "comma"
+              },
+              {
+                "id": "00000067-0000-4000-8000-000000000000",
+                "name": "active",
+                "type": "boolean",
+                "required": false,
+                "description": "",
+                "arrayFormat": "repeat"
+              },
+              {
+                "id": "00000068-0000-4000-8000-000000000000",
+                "name": "label",
+                "type": "string",
+                "required": false,
+                "description": "",
+                "arrayFormat": "repeat"
+              }
+            ],
+            "headers": [
+              {
+                "id": "00000069-0000-4000-8000-000000000000",
+                "name": "X-Tag",
+                "type": "string",
+                "required": false,
+                "description": ""
+              },
+              {
+                "id": "0000006a-0000-4000-8000-000000000000",
+                "name": "X-Tag",
+                "type": "string",
+                "required": false,
+                "description": ""
+              },
+              {
+                "id": "0000006b-0000-4000-8000-000000000000",
+                "name": "Authorization",
+                "type": "string",
+                "required": false,
+                "description": ""
+              },
+              {
+                "id": "0000006c-0000-4000-8000-000000000000",
+                "name": "X-Key",
+                "type": "string",
+                "required": false,
+                "description": ""
+              }
+            ],
+            "body": {
+              "format": "json",
+              "json": [
+                {
+                  "id": "0000006e-0000-4000-8000-000000000000",
+                  "name": "$",
+                  "type": "object",
+                  "required": false,
+                  "description": "",
+                  "parentId": null
+                },
+                {
+                  "id": "0000006f-0000-4000-8000-000000000000",
+                  "name": "count",
+                  "type": "number",
+                  "required": true,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000070-0000-4000-8000-000000000000",
+                  "name": "enabled",
+                  "type": "boolean",
+                  "required": true,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000071-0000-4000-8000-000000000000",
+                  "name": "note",
+                  "type": "string",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000072-0000-4000-8000-000000000000",
+                  "name": "tags",
+                  "type": "string array",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000073-0000-4000-8000-000000000000",
+                  "name": "robot",
+                  "type": "object",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000074-0000-4000-8000-000000000000",
+                  "name": "same",
+                  "type": "string",
+                  "required": false,
+                  "description": "",
+                  "parentId": "00000073-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000075-0000-4000-8000-000000000000",
+                  "name": "other",
+                  "type": "object",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000076-0000-4000-8000-000000000000",
+                  "name": "same",
+                  "type": "string",
+                  "required": false,
+                  "description": "",
+                  "parentId": "00000075-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000077-0000-4000-8000-000000000000",
+                  "name": "nothing",
+                  "type": "null",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000078-0000-4000-8000-000000000000",
+                  "name": "events",
+                  "type": "object array",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000079-0000-4000-8000-000000000000",
+                  "name": "0",
+                  "type": "object",
+                  "required": false,
+                  "description": "",
+                  "parentId": "00000078-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "0000007a-0000-4000-8000-000000000000",
+                  "name": "id",
+                  "type": "number",
+                  "required": false,
+                  "description": "",
+                  "parentId": "00000079-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "0000007b-0000-4000-8000-000000000000",
+                  "name": "mixed",
+                  "type": "array",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "0000007c-0000-4000-8000-000000000000",
+                  "name": "0",
+                  "type": "number",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000007b-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "0000007d-0000-4000-8000-000000000000",
+                  "name": "1",
+                  "type": "boolean",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000007b-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "0000007e-0000-4000-8000-000000000000",
+                  "name": "2",
+                  "type": "null",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000007b-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "0000007f-0000-4000-8000-000000000000",
+                  "name": "empty",
+                  "type": "array",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000080-0000-4000-8000-000000000000",
+                  "name": "numbers",
+                  "type": "number array",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000081-0000-4000-8000-000000000000",
+                  "name": "flags",
+                  "type": "boolean array",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000082-0000-4000-8000-000000000000",
+                  "name": "optional",
+                  "type": "number",
+                  "required": false,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000083-0000-4000-8000-000000000000",
+                  "name": "excluded",
+                  "type": "number",
+                  "required": true,
+                  "description": "",
+                  "parentId": "0000006e-0000-4000-8000-000000000000"
+                }
+              ],
+              "multipart": []
+            }
+          },
+          "response": {
+            "success": [
+              {
+                "id": "00000190-0000-4000-8000-000000000000",
+                "name": "$",
+                "type": "object",
+                "required": false,
+                "description": "",
+                "parentId": null
+              },
+              {
+                "id": "00000191-0000-4000-8000-000000000000",
+                "name": "count",
+                "type": "number",
+                "required": false,
+                "description": "",
+                "parentId": "00000190-0000-4000-8000-000000000000"
+              },
+              {
+                "id": "00000192-0000-4000-8000-000000000000",
+                "name": "detail",
+                "type": "object",
+                "required": false,
+                "description": "",
+                "parentId": "00000190-0000-4000-8000-000000000000"
+              },
+              {
+                "id": "00000193-0000-4000-8000-000000000000",
+                "name": "name",
+                "type": "string",
+                "required": false,
+                "description": "",
+                "parentId": "00000192-0000-4000-8000-000000000000"
+              }
+            ],
+            "errors": [
+              {
+                "id": "0000019a-0000-4000-8000-000000000000",
+                "name": "입력 오류",
+                "status": "399",
+                "description": "",
+                "fields": [
+                  {
+                    "id": "0000019b-0000-4000-8000-000000000000",
+                    "name": "message",
+                    "enabled": true,
+                    "value": "invalid"
+                  }
+                ]
+              },
+              {
+                "id": "0000019c-0000-4000-8000-000000000000",
+                "name": "다른 입력 오류",
+                "status": "399",
+                "description": "",
+                "fields": [
+                  {
+                    "id": "0000019d-0000-4000-8000-000000000000",
+                    "name": "message",
+                    "enabled": true,
+                    "value": "another"
+                  }
+                ]
+              }
+            ]
+          },
+          "documentation": {
+            "description": "로봇 정보 수정\n명세와 입력 세트를 공유합니다.",
+            "requestExample": "{\"count\":0,\"enabled\":false}",
+            "responseExample": "{\"count\":1}"
+          },
+          "defaultPresetId": "000000c8-0000-4000-8000-000000000000",
+          "presets": [
+            {
+              "id": "000000c8-0000-4000-8000-000000000000",
+              "name": "입력 세트 1",
+              "description": "0·false·빈 값·한글",
+              "values": {
+                "path": {
+                  "00000064-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "robot-001"
+                  }
+                },
+                "query": {
+                  "00000065-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "[0, 2, 3]"
+                  },
+                  "00000066-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "[4, 5]"
+                  },
+                  "00000067-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "false"
+                  },
+                  "00000068-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "한글 & test"
+                  }
+                },
+                "headers": {
+                  "00000069-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "first"
+                  },
+                  "0000006a-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "second"
+                  },
+                  "0000006b-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  "0000006c-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "secretRef": "00000018-0000-4000-8000-000000000000"
+                  }
+                },
+                "body": {
+                  "fields": {
+                    "0000006f-0000-4000-8000-000000000000": "0",
+                    "00000070-0000-4000-8000-000000000000": "false",
+                    "00000071-0000-4000-8000-000000000000": "",
+                    "00000072-0000-4000-8000-000000000000": "[\"A\", \"한글\"]",
+                    "00000074-0000-4000-8000-000000000000": "배송 로봇",
+                    "00000076-0000-4000-8000-000000000000": "다른 객체의 같은 키",
+                    "00000077-0000-4000-8000-000000000000": "",
+                    "0000007a-0000-4000-8000-000000000000": "1",
+                    "0000007c-0000-4000-8000-000000000000": "0",
+                    "0000007d-0000-4000-8000-000000000000": "false",
+                    "0000007e-0000-4000-8000-000000000000": "",
+                    "00000080-0000-4000-8000-000000000000": "[0,1]",
+                    "00000081-0000-4000-8000-000000000000": "[false,true]",
+                    "00000082-0000-4000-8000-000000000000": "",
+                    "00000083-0000-4000-8000-000000000000": "invalid"
+                  },
+                  "enabled": {
+                    "00000083-0000-4000-8000-000000000000": false
+                  }
+                },
+                "multipart": {}
+              }
+            },
+            {
+              "id": "000000c9-0000-4000-8000-000000000000",
+              "name": "입력 세트 2",
+              "description": "다른 입력값",
+              "values": {
+                "path": {
+                  "00000064-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "robot-002"
+                  }
+                },
+                "query": {
+                  "00000065-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "[0, 2, 3]"
+                  },
+                  "00000066-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "[4, 5]"
+                  },
+                  "00000067-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "false"
+                  },
+                  "00000068-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "한글 & test"
+                  }
+                },
+                "headers": {
+                  "00000069-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "first"
+                  },
+                  "0000006a-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "second"
+                  },
+                  "0000006b-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  "0000006c-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "secretRef": "00000018-0000-4000-8000-000000000000"
+                  }
+                },
+                "body": {
+                  "fields": {
+                    "0000006f-0000-4000-8000-000000000000": "2",
+                    "00000070-0000-4000-8000-000000000000": "false",
+                    "00000071-0000-4000-8000-000000000000": "",
+                    "00000072-0000-4000-8000-000000000000": "[\"A\", \"한글\"]",
+                    "00000074-0000-4000-8000-000000000000": "배송 로봇",
+                    "00000076-0000-4000-8000-000000000000": "다른 객체의 같은 키",
+                    "00000077-0000-4000-8000-000000000000": "",
+                    "0000007a-0000-4000-8000-000000000000": "1",
+                    "0000007c-0000-4000-8000-000000000000": "0",
+                    "0000007d-0000-4000-8000-000000000000": "false",
+                    "0000007e-0000-4000-8000-000000000000": "",
+                    "00000080-0000-4000-8000-000000000000": "[0,1]",
+                    "00000081-0000-4000-8000-000000000000": "[false,true]",
+                    "00000082-0000-4000-8000-000000000000": "",
+                    "00000083-0000-4000-8000-000000000000": "invalid"
+                  },
+                  "enabled": {
+                    "00000083-0000-4000-8000-000000000000": false
+                  }
+                },
+                "multipart": {}
+              }
+            }
+          ]
+        },
+        "apis/0000000b-0000-4000-8000-000000000000.json": {
+          "formatVersion": 1,
+          "id": "0000000b-0000-4000-8000-000000000000",
+          "name": "로봇 파일 등록",
+          "method": "POST",
+          "url": "{{baseUrl}}/robots/upload",
+          "request": {
+            "path": [],
+            "query": [],
+            "headers": [],
+            "body": {
+              "format": "multipart",
+              "json": [
+                {
+                  "id": "00000136-0000-4000-8000-000000000000",
+                  "name": "$",
+                  "type": "object",
+                  "required": false,
+                  "description": "",
+                  "parentId": null
+                },
+                {
+                  "id": "00000137-0000-4000-8000-000000000000",
+                  "name": "draft",
+                  "type": "string",
+                  "required": false,
+                  "description": "",
+                  "parentId": "00000136-0000-4000-8000-000000000000"
+                }
+              ],
+              "multipart": [
+                {
+                  "id": "0000012c-0000-4000-8000-000000000000",
+                  "name": "title",
+                  "type": "string",
+                  "required": true,
+                  "description": ""
+                },
+                {
+                  "id": "0000012d-0000-4000-8000-000000000000",
+                  "name": "attachment",
+                  "type": "file",
+                  "required": true,
+                  "description": ""
+                },
+                {
+                  "id": "0000012e-0000-4000-8000-000000000000",
+                  "name": "count",
+                  "type": "number",
+                  "required": true,
+                  "description": ""
+                },
+                {
+                  "id": "0000012f-0000-4000-8000-000000000000",
+                  "name": "enabled",
+                  "type": "boolean",
+                  "required": false,
+                  "description": ""
+                },
+                {
+                  "id": "00000130-0000-4000-8000-000000000000",
+                  "name": "title",
+                  "type": "string",
+                  "required": false,
+                  "description": ""
+                }
+              ]
+            }
+          },
+          "response": {
+            "success": [],
+            "errors": []
+          },
+          "documentation": {
+            "description": "",
+            "requestExample": "",
+            "responseExample": ""
+          },
+          "defaultPresetId": "00000140-0000-4000-8000-000000000000",
+          "presets": [
+            {
+              "id": "00000140-0000-4000-8000-000000000000",
+              "name": "파일 입력",
+              "description": "",
+              "values": {
+                "path": {},
+                "query": {},
+                "headers": {},
+                "body": {
+                  "fields": {
+                    "00000137-0000-4000-8000-000000000000": "전송 형식별 초안"
+                  },
+                  "enabled": {}
+                },
+                "multipart": {
+                  "0000012c-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "테스트 파일"
+                  },
+                  "0000012d-0000-4000-8000-000000000000": {
+                    "enabled": true
+                  },
+                  "0000012e-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "0"
+                  },
+                  "0000012f-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "false"
+                  },
+                  "00000130-0000-4000-8000-000000000000": {
+                    "enabled": true,
+                    "value": "중복 키 보존"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "environments/00000014-0000-4000-8000-000000000000.json": {
+          "formatVersion": 1,
+          "id": "00000014-0000-4000-8000-000000000000",
+          "name": "Local",
+          "variables": [
+            {
+              "id": "00000015-0000-4000-8000-000000000000",
+              "name": "baseUrl",
+              "enabled": true,
+              "value": "http://localhost:8080"
+            },
+            {
+              "id": "00000016-0000-4000-8000-000000000000",
+              "name": "accessToken",
+              "enabled": true,
+              "secretRef": "00000017-0000-4000-8000-000000000000"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "empty",
+      "description": "빈 작업 공간",
+      "files": {
+        "workspace.json": {
+          "formatVersion": 1,
+          "id": "00000001-0000-4000-8000-000000000000",
+          "name": "Empty",
+          "collections": [],
+          "environmentIds": []
+        }
+      }
+    },
+    {
+      "name": "scalar",
+      "description": "JSON 루트 scalar",
+      "base": "main",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json"
+          ],
+          "value": [
+            {
+              "id": "0000006e-0000-4000-8000-000000000000",
+              "name": "$",
+              "type": "string",
+              "required": false,
+              "description": "",
+              "parentId": null
+            }
+          ]
+        },
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "body"
+          ],
+          "value": {
+            "fields": {
+              "0000006e-0000-4000-8000-000000000000": "한글 scalar"
+            },
+            "enabled": {}
+          }
+        },
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            1,
+            "values",
+            "body"
+          ],
+          "value": {
+            "fields": {
+              "0000006e-0000-4000-8000-000000000000": "한글 scalar"
+            },
+            "enabled": {}
+          }
+        }
+      ]
+    },
+    {
+      "name": "null",
+      "description": "JSON 루트 null",
+      "base": "main",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json"
+          ],
+          "value": [
+            {
+              "id": "0000006e-0000-4000-8000-000000000000",
+              "name": "$",
+              "type": "null",
+              "required": false,
+              "description": "",
+              "parentId": null
+            }
+          ]
+        },
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "body"
+          ],
+          "value": {
+            "fields": {},
+            "enabled": {}
+          }
+        },
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            1,
+            "values",
+            "body"
+          ],
+          "value": {
+            "fields": {},
+            "enabled": {}
+          }
+        }
+      ]
+    },
+    {
+      "name": "mixed-array",
+      "description": "JSON 루트 mixed-array",
+      "base": "main",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json"
+          ],
+          "value": [
+            {
+              "id": "0000006e-0000-4000-8000-000000000000",
+              "name": "$",
+              "type": "array",
+              "required": false,
+              "description": "",
+              "parentId": null
+            },
+            {
+              "id": "0000006f-0000-4000-8000-000000000000",
+              "name": "0",
+              "type": "number",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000070-0000-4000-8000-000000000000",
+              "name": "1",
+              "type": "boolean",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000071-0000-4000-8000-000000000000",
+              "name": "2",
+              "type": "null",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            }
+          ]
+        },
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "body"
+          ],
+          "value": {
+            "fields": {
+              "0000006f-0000-4000-8000-000000000000": "0",
+              "00000070-0000-4000-8000-000000000000": "false",
+              "00000071-0000-4000-8000-000000000000": ""
+            },
+            "enabled": {}
+          }
+        },
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            1,
+            "values",
+            "body"
+          ],
+          "value": {
+            "fields": {
+              "0000006f-0000-4000-8000-000000000000": "0",
+              "00000070-0000-4000-8000-000000000000": "false",
+              "00000071-0000-4000-8000-000000000000": ""
+            },
+            "enabled": {}
+          }
+        }
+      ]
+    },
+    {
+      "name": "optional-defaults",
+      "description": "입력 맵의 누락 항목은 빈 값·활성 기본값으로 해석",
+      "base": "main",
+      "edits": [
+        {
+          "op": "remove",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "query",
+            "00000066-0000-4000-8000-000000000000"
+          ]
+        },
+        {
+          "op": "remove",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            1,
+            "values",
+            "query",
+            "00000066-0000-4000-8000-000000000000"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "deferred-values",
+      "description": "숫자 필드의 변수식·비밀 참조는 실행 전 주입 단계에서 검증",
+      "base": "main",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "body",
+            "fields",
+            "0000006f-0000-4000-8000-000000000000"
+          ],
+          "value": "{{count}}"
+        },
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            1,
+            "values",
+            "body",
+            "fields",
+            "0000006f-0000-4000-8000-000000000000"
+          ],
+          "value": {
+            "secretRef": "00000019-0000-4000-8000-000000000000"
+          }
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "name": "unsupported-version",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "workspace.json",
+          "path": [
+            "formatVersion"
+          ],
+          "value": 2
+        }
+      ]
+    },
+    {
+      "name": "unknown-property",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "unexpected"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "invalid-uuid",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "id"
+          ],
+          "value": "bad-id"
+        }
+      ]
+    },
+    {
+      "name": "no-presets",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets"
+          ],
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "path-not-required",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "path",
+            0,
+            "required"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "unknown-body-format",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "format"
+          ],
+          "value": "text"
+        }
+      ]
+    },
+    {
+      "name": "bad-query-format",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "query",
+            0,
+            "arrayFormat"
+          ],
+          "value": "unknown"
+        }
+      ]
+    },
+    {
+      "name": "file-type-outside-multipart",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "headers",
+            0,
+            "type"
+          ],
+          "value": "file"
+        }
+      ]
+    },
+    {
+      "name": "secret-with-literal",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "environments/00000014-0000-4000-8000-000000000000.json",
+          "path": [
+            "variables",
+            1,
+            "value"
+          ],
+          "value": "must-not-persist"
+        }
+      ]
+    },
+    {
+      "name": "secret-ref-not-uuid",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "environments/00000014-0000-4000-8000-000000000000.json",
+          "path": [
+            "variables",
+            1,
+            "secretRef"
+          ],
+          "value": "bad-ref"
+        }
+      ]
+    },
+    {
+      "name": "file-object-not-shared",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000b-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "multipart",
+            "0000012d-0000-4000-8000-000000000000",
+            "file"
+          ],
+          "value": {
+            "name": "x.txt"
+          }
+        }
+      ]
+    },
+    {
+      "name": "file-path-not-shared",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000b-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "multipart",
+            "0000012d-0000-4000-8000-000000000000",
+            "path"
+          ],
+          "value": "C:/private/x.txt"
+        }
+      ]
+    },
+    {
+      "name": "file-value-not-shared",
+      "base": "main",
+      "expectedCode": "file-value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000b-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "multipart",
+            "0000012d-0000-4000-8000-000000000000",
+            "value"
+          ],
+          "value": "x.txt"
+        }
+      ]
+    },
+    {
+      "name": "text-row-missing-value",
+      "base": "main",
+      "expectedCode": "value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000b-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "multipart",
+            "0000012c-0000-4000-8000-000000000000"
+          ],
+          "value": {
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "typed-value-must-be-string",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "query",
+            "00000065-0000-4000-8000-000000000000",
+            "value"
+          ],
+          "value": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "name": "default-preset-missing",
+      "base": "main",
+      "expectedCode": "reference",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "defaultPresetId"
+          ],
+          "value": "000003e7-0000-4000-8000-000000000000"
+        }
+      ]
+    },
+    {
+      "name": "unknown-field-value",
+      "base": "main",
+      "expectedCode": "reference",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "headers",
+            "000003e7-0000-4000-8000-000000000000"
+          ],
+          "value": {
+            "enabled": true,
+            "value": "value"
+          }
+        }
+      ]
+    },
+    {
+      "name": "container-has-value",
+      "base": "main",
+      "expectedCode": "reference",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "body",
+            "fields",
+            "0000006e-0000-4000-8000-000000000000"
+          ],
+          "value": "{}"
+        }
+      ]
+    },
+    {
+      "name": "duplicate-api-placement",
+      "base": "main",
+      "expectedCode": "reference",
+      "edits": [
+        {
+          "op": "set",
+          "file": "workspace.json",
+          "path": [
+            "collections",
+            0,
+            "folders",
+            0,
+            "apiIds"
+          ],
+          "value": [
+            "0000000a-0000-4000-8000-000000000000",
+            "0000000b-0000-4000-8000-000000000000"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "missing-api-file",
+      "base": "main",
+      "expectedCode": "reference",
+      "edits": [
+        {
+          "op": "deleteFile",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [],
+          "value": null
+        }
+      ]
+    },
+    {
+      "name": "missing-environment-file",
+      "base": "main",
+      "expectedCode": "reference",
+      "edits": [
+        {
+          "op": "deleteFile",
+          "file": "environments/00000014-0000-4000-8000-000000000000.json",
+          "path": [],
+          "value": null
+        }
+      ]
+    },
+    {
+      "name": "unreferenced-environment",
+      "base": "main",
+      "expectedCode": "unreferenced",
+      "edits": [
+        {
+          "op": "set",
+          "file": "workspace.json",
+          "path": [
+            "environmentIds"
+          ],
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "filename-id-mismatch",
+      "base": "main",
+      "expectedCode": "file-id",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "id"
+          ],
+          "value": "000003e7-0000-4000-8000-000000000000"
+        }
+      ]
+    },
+    {
+      "name": "invalid-relative-filename",
+      "base": "main",
+      "expectedCode": "file-path",
+      "edits": [
+        {
+          "op": "putFile",
+          "file": "../escape.json",
+          "path": [],
+          "value": {}
+        }
+      ]
+    },
+    {
+      "name": "body-parent-missing",
+      "base": "main",
+      "expectedCode": "tree",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json",
+            1,
+            "parentId"
+          ],
+          "value": "000003e7-0000-4000-8000-000000000000"
+        }
+      ]
+    },
+    {
+      "name": "second-body-root",
+      "base": "main",
+      "expectedCode": "tree",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json",
+            1,
+            "parentId"
+          ],
+          "value": null
+        }
+      ]
+    },
+    {
+      "name": "root-must-be-first",
+      "base": "main",
+      "expectedCode": "tree",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json",
+            0,
+            "name"
+          ],
+          "value": "not-root"
+        }
+      ]
+    },
+    {
+      "name": "scalar-with-children",
+      "base": "main",
+      "expectedCode": "tree",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json",
+            5,
+            "type"
+          ],
+          "value": "string"
+        }
+      ]
+    },
+    {
+      "name": "object-array-child-type",
+      "base": "main",
+      "expectedCode": "tree",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json",
+            11,
+            "type"
+          ],
+          "value": "string"
+        }
+      ]
+    },
+    {
+      "name": "duplicate-object-key",
+      "base": "main",
+      "expectedCode": "duplicate-key",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json",
+            2,
+            "name"
+          ],
+          "value": "count"
+        }
+      ]
+    },
+    {
+      "name": "duplicate-field-id",
+      "base": "main",
+      "expectedCode": "duplicate-id",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "query",
+            1,
+            "id"
+          ],
+          "value": "00000065-0000-4000-8000-000000000000"
+        }
+      ]
+    },
+    {
+      "name": "duplicate-preset-name",
+      "base": "main",
+      "expectedCode": "duplicate-name",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            1,
+            "name"
+          ],
+          "value": " 입력 세트 1 "
+        }
+      ]
+    },
+    {
+      "name": "duplicate-environment-key",
+      "base": "main",
+      "expectedCode": "duplicate-key",
+      "edits": [
+        {
+          "op": "set",
+          "file": "environments/00000014-0000-4000-8000-000000000000.json",
+          "path": [
+            "variables",
+            1,
+            "name"
+          ],
+          "value": "baseUrl"
+        }
+      ]
+    },
+    {
+      "name": "duplicate-environment-variable-id",
+      "base": "main",
+      "expectedCode": "duplicate-id",
+      "edits": [
+        {
+          "op": "set",
+          "file": "environments/00000014-0000-4000-8000-000000000000.json",
+          "path": [
+            "variables",
+            1,
+            "id"
+          ],
+          "value": "00000015-0000-4000-8000-000000000000"
+        }
+      ]
+    },
+    {
+      "name": "path-disabled",
+      "base": "main",
+      "expectedCode": "path-enabled",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "path",
+            "00000064-0000-4000-8000-000000000000",
+            "enabled"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "required-literal-missing",
+      "base": "main",
+      "expectedCode": "value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "path",
+            "00000064-0000-4000-8000-000000000000",
+            "value"
+          ],
+          "value": ""
+        }
+      ]
+    },
+    {
+      "name": "wrong-number",
+      "base": "main",
+      "expectedCode": "value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "body",
+            "fields",
+            "0000006f-0000-4000-8000-000000000000"
+          ],
+          "value": "\"1\""
+        }
+      ]
+    },
+    {
+      "name": "wrong-boolean",
+      "base": "main",
+      "expectedCode": "value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "body",
+            "fields",
+            "00000070-0000-4000-8000-000000000000"
+          ],
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "name": "wrong-query-array-element",
+      "base": "main",
+      "expectedCode": "value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "query",
+            "00000065-0000-4000-8000-000000000000",
+            "value"
+          ],
+          "value": "[1,\"2\"]"
+        }
+      ]
+    },
+    {
+      "name": "required-query-empty-array",
+      "base": "main",
+      "expectedCode": "value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "query",
+            "00000065-0000-4000-8000-000000000000",
+            "value"
+          ],
+          "value": "[]"
+        }
+      ]
+    },
+    {
+      "name": "wrong-body-array",
+      "base": "main",
+      "expectedCode": "value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "body",
+            "fields",
+            "00000081-0000-4000-8000-000000000000"
+          ],
+          "value": "[false,1]"
+        }
+      ]
+    },
+    {
+      "name": "other-preset-invalid",
+      "base": "main",
+      "expectedCode": "value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            1,
+            "values",
+            "body",
+            "fields",
+            "0000006f-0000-4000-8000-000000000000"
+          ],
+          "value": "bad"
+        }
+      ]
+    },
+    {
+      "name": "environment-private-selection",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "environments/00000014-0000-4000-8000-000000000000.json",
+          "path": [
+            "isSelected"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "error-status-length",
+      "base": "main",
+      "expectedCode": "schema",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "response",
+            "errors",
+            0,
+            "status"
+          ],
+          "value": "1234"
+        }
+      ]
+    },
+    {
+      "name": "parent-cycle",
+      "base": "main",
+      "expectedCode": "tree",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "request",
+            "body",
+            "json"
+          ],
+          "value": [
+            {
+              "id": "0000006e-0000-4000-8000-000000000000",
+              "name": "$",
+              "type": "object",
+              "required": false,
+              "description": "",
+              "parentId": null
+            },
+            {
+              "id": "0000006f-0000-4000-8000-000000000000",
+              "name": "count",
+              "type": "number",
+              "required": true,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000070-0000-4000-8000-000000000000",
+              "name": "enabled",
+              "type": "boolean",
+              "required": true,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000071-0000-4000-8000-000000000000",
+              "name": "note",
+              "type": "string",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000072-0000-4000-8000-000000000000",
+              "name": "tags",
+              "type": "string array",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000073-0000-4000-8000-000000000000",
+              "name": "robot",
+              "type": "object",
+              "required": false,
+              "description": "",
+              "parentId": "00000075-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000074-0000-4000-8000-000000000000",
+              "name": "same",
+              "type": "string",
+              "required": false,
+              "description": "",
+              "parentId": "00000073-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000075-0000-4000-8000-000000000000",
+              "name": "other",
+              "type": "object",
+              "required": false,
+              "description": "",
+              "parentId": "00000073-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000076-0000-4000-8000-000000000000",
+              "name": "same",
+              "type": "string",
+              "required": false,
+              "description": "",
+              "parentId": "00000075-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000077-0000-4000-8000-000000000000",
+              "name": "nothing",
+              "type": "null",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000078-0000-4000-8000-000000000000",
+              "name": "events",
+              "type": "object array",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000079-0000-4000-8000-000000000000",
+              "name": "0",
+              "type": "object",
+              "required": false,
+              "description": "",
+              "parentId": "00000078-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "0000007a-0000-4000-8000-000000000000",
+              "name": "id",
+              "type": "number",
+              "required": false,
+              "description": "",
+              "parentId": "00000079-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "0000007b-0000-4000-8000-000000000000",
+              "name": "mixed",
+              "type": "array",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "0000007c-0000-4000-8000-000000000000",
+              "name": "0",
+              "type": "number",
+              "required": false,
+              "description": "",
+              "parentId": "0000007b-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "0000007d-0000-4000-8000-000000000000",
+              "name": "1",
+              "type": "boolean",
+              "required": false,
+              "description": "",
+              "parentId": "0000007b-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "0000007e-0000-4000-8000-000000000000",
+              "name": "2",
+              "type": "null",
+              "required": false,
+              "description": "",
+              "parentId": "0000007b-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "0000007f-0000-4000-8000-000000000000",
+              "name": "empty",
+              "type": "array",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000080-0000-4000-8000-000000000000",
+              "name": "numbers",
+              "type": "number array",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000081-0000-4000-8000-000000000000",
+              "name": "flags",
+              "type": "boolean array",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000082-0000-4000-8000-000000000000",
+              "name": "optional",
+              "type": "number",
+              "required": false,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            },
+            {
+              "id": "00000083-0000-4000-8000-000000000000",
+              "name": "excluded",
+              "type": "number",
+              "required": true,
+              "description": "",
+              "parentId": "0000006e-0000-4000-8000-000000000000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "duplicate-top-level-id",
+      "base": "main",
+      "expectedCode": "duplicate-id",
+      "edits": [
+        {
+          "op": "set",
+          "file": "workspace.json",
+          "path": [
+            "collections",
+            0,
+            "folders",
+            1,
+            "id"
+          ],
+          "value": "00000002-0000-4000-8000-000000000000"
+        }
+      ]
+    },
+    {
+      "name": "unreferenced-api",
+      "base": "main",
+      "expectedCode": "unreferenced",
+      "edits": [
+        {
+          "op": "putFile",
+          "file": "apis/0000000c-0000-4000-8000-000000000000.json",
+          "path": [],
+          "value": {
+            "formatVersion": 1,
+            "id": "0000000c-0000-4000-8000-000000000000",
+            "name": "로봇 수정",
+            "method": "PATCH",
+            "url": "{{baseUrl}}/robots/{{robotId}}",
+            "request": {
+              "path": [
+                {
+                  "id": "00000064-0000-4000-8000-000000000000",
+                  "name": "robotId",
+                  "type": "string",
+                  "required": true,
+                  "description": ""
+                }
+              ],
+              "query": [
+                {
+                  "id": "00000065-0000-4000-8000-000000000000",
+                  "name": "ids",
+                  "type": "number array",
+                  "required": true,
+                  "description": "",
+                  "arrayFormat": "repeat"
+                },
+                {
+                  "id": "00000066-0000-4000-8000-000000000000",
+                  "name": "ids",
+                  "type": "number array",
+                  "required": false,
+                  "description": "",
+                  "arrayFormat": "comma"
+                },
+                {
+                  "id": "00000067-0000-4000-8000-000000000000",
+                  "name": "active",
+                  "type": "boolean",
+                  "required": false,
+                  "description": "",
+                  "arrayFormat": "repeat"
+                },
+                {
+                  "id": "00000068-0000-4000-8000-000000000000",
+                  "name": "label",
+                  "type": "string",
+                  "required": false,
+                  "description": "",
+                  "arrayFormat": "repeat"
+                }
+              ],
+              "headers": [
+                {
+                  "id": "00000069-0000-4000-8000-000000000000",
+                  "name": "X-Tag",
+                  "type": "string",
+                  "required": false,
+                  "description": ""
+                },
+                {
+                  "id": "0000006a-0000-4000-8000-000000000000",
+                  "name": "X-Tag",
+                  "type": "string",
+                  "required": false,
+                  "description": ""
+                },
+                {
+                  "id": "0000006b-0000-4000-8000-000000000000",
+                  "name": "Authorization",
+                  "type": "string",
+                  "required": false,
+                  "description": ""
+                },
+                {
+                  "id": "0000006c-0000-4000-8000-000000000000",
+                  "name": "X-Key",
+                  "type": "string",
+                  "required": false,
+                  "description": ""
+                }
+              ],
+              "body": {
+                "format": "json",
+                "json": [
+                  {
+                    "id": "0000006e-0000-4000-8000-000000000000",
+                    "name": "$",
+                    "type": "object",
+                    "required": false,
+                    "description": "",
+                    "parentId": null
+                  },
+                  {
+                    "id": "0000006f-0000-4000-8000-000000000000",
+                    "name": "count",
+                    "type": "number",
+                    "required": true,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000070-0000-4000-8000-000000000000",
+                    "name": "enabled",
+                    "type": "boolean",
+                    "required": true,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000071-0000-4000-8000-000000000000",
+                    "name": "note",
+                    "type": "string",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000072-0000-4000-8000-000000000000",
+                    "name": "tags",
+                    "type": "string array",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000073-0000-4000-8000-000000000000",
+                    "name": "robot",
+                    "type": "object",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000074-0000-4000-8000-000000000000",
+                    "name": "same",
+                    "type": "string",
+                    "required": false,
+                    "description": "",
+                    "parentId": "00000073-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000075-0000-4000-8000-000000000000",
+                    "name": "other",
+                    "type": "object",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000076-0000-4000-8000-000000000000",
+                    "name": "same",
+                    "type": "string",
+                    "required": false,
+                    "description": "",
+                    "parentId": "00000075-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000077-0000-4000-8000-000000000000",
+                    "name": "nothing",
+                    "type": "null",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000078-0000-4000-8000-000000000000",
+                    "name": "events",
+                    "type": "object array",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000079-0000-4000-8000-000000000000",
+                    "name": "0",
+                    "type": "object",
+                    "required": false,
+                    "description": "",
+                    "parentId": "00000078-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "0000007a-0000-4000-8000-000000000000",
+                    "name": "id",
+                    "type": "number",
+                    "required": false,
+                    "description": "",
+                    "parentId": "00000079-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "0000007b-0000-4000-8000-000000000000",
+                    "name": "mixed",
+                    "type": "array",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "0000007c-0000-4000-8000-000000000000",
+                    "name": "0",
+                    "type": "number",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000007b-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "0000007d-0000-4000-8000-000000000000",
+                    "name": "1",
+                    "type": "boolean",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000007b-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "0000007e-0000-4000-8000-000000000000",
+                    "name": "2",
+                    "type": "null",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000007b-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "0000007f-0000-4000-8000-000000000000",
+                    "name": "empty",
+                    "type": "array",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000080-0000-4000-8000-000000000000",
+                    "name": "numbers",
+                    "type": "number array",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000081-0000-4000-8000-000000000000",
+                    "name": "flags",
+                    "type": "boolean array",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000082-0000-4000-8000-000000000000",
+                    "name": "optional",
+                    "type": "number",
+                    "required": false,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  },
+                  {
+                    "id": "00000083-0000-4000-8000-000000000000",
+                    "name": "excluded",
+                    "type": "number",
+                    "required": true,
+                    "description": "",
+                    "parentId": "0000006e-0000-4000-8000-000000000000"
+                  }
+                ],
+                "multipart": []
+              }
+            },
+            "response": {
+              "success": [
+                {
+                  "id": "00000190-0000-4000-8000-000000000000",
+                  "name": "$",
+                  "type": "object",
+                  "required": false,
+                  "description": "",
+                  "parentId": null
+                },
+                {
+                  "id": "00000191-0000-4000-8000-000000000000",
+                  "name": "count",
+                  "type": "number",
+                  "required": false,
+                  "description": "",
+                  "parentId": "00000190-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000192-0000-4000-8000-000000000000",
+                  "name": "detail",
+                  "type": "object",
+                  "required": false,
+                  "description": "",
+                  "parentId": "00000190-0000-4000-8000-000000000000"
+                },
+                {
+                  "id": "00000193-0000-4000-8000-000000000000",
+                  "name": "name",
+                  "type": "string",
+                  "required": false,
+                  "description": "",
+                  "parentId": "00000192-0000-4000-8000-000000000000"
+                }
+              ],
+              "errors": [
+                {
+                  "id": "0000019a-0000-4000-8000-000000000000",
+                  "name": "입력 오류",
+                  "status": "399",
+                  "description": "",
+                  "fields": [
+                    {
+                      "id": "0000019b-0000-4000-8000-000000000000",
+                      "name": "message",
+                      "enabled": true,
+                      "value": "invalid"
+                    }
+                  ]
+                },
+                {
+                  "id": "0000019c-0000-4000-8000-000000000000",
+                  "name": "다른 입력 오류",
+                  "status": "399",
+                  "description": "",
+                  "fields": [
+                    {
+                      "id": "0000019d-0000-4000-8000-000000000000",
+                      "name": "message",
+                      "enabled": true,
+                      "value": "another"
+                    }
+                  ]
+                }
+              ]
+            },
+            "documentation": {
+              "description": "로봇 정보 수정\n명세와 입력 세트를 공유합니다.",
+              "requestExample": "{\"count\":0,\"enabled\":false}",
+              "responseExample": "{\"count\":1}"
+            },
+            "defaultPresetId": "000000c8-0000-4000-8000-000000000000",
+            "presets": [
+              {
+                "id": "000000c8-0000-4000-8000-000000000000",
+                "name": "입력 세트 1",
+                "description": "0·false·빈 값·한글",
+                "values": {
+                  "path": {
+                    "00000064-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "robot-001"
+                    }
+                  },
+                  "query": {
+                    "00000065-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "[0, 2, 3]"
+                    },
+                    "00000066-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "[4, 5]"
+                    },
+                    "00000067-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "false"
+                    },
+                    "00000068-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "한글 & test"
+                    }
+                  },
+                  "headers": {
+                    "00000069-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "first"
+                    },
+                    "0000006a-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "second"
+                    },
+                    "0000006b-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "Bearer {{accessToken}}"
+                    },
+                    "0000006c-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "secretRef": "00000018-0000-4000-8000-000000000000"
+                    }
+                  },
+                  "body": {
+                    "fields": {
+                      "0000006f-0000-4000-8000-000000000000": "0",
+                      "00000070-0000-4000-8000-000000000000": "false",
+                      "00000071-0000-4000-8000-000000000000": "",
+                      "00000072-0000-4000-8000-000000000000": "[\"A\", \"한글\"]",
+                      "00000074-0000-4000-8000-000000000000": "배송 로봇",
+                      "00000076-0000-4000-8000-000000000000": "다른 객체의 같은 키",
+                      "00000077-0000-4000-8000-000000000000": "",
+                      "0000007a-0000-4000-8000-000000000000": "1",
+                      "0000007c-0000-4000-8000-000000000000": "0",
+                      "0000007d-0000-4000-8000-000000000000": "false",
+                      "0000007e-0000-4000-8000-000000000000": "",
+                      "00000080-0000-4000-8000-000000000000": "[0,1]",
+                      "00000081-0000-4000-8000-000000000000": "[false,true]",
+                      "00000082-0000-4000-8000-000000000000": "",
+                      "00000083-0000-4000-8000-000000000000": "invalid"
+                    },
+                    "enabled": {
+                      "00000083-0000-4000-8000-000000000000": false
+                    }
+                  },
+                  "multipart": {}
+                }
+              },
+              {
+                "id": "000000c9-0000-4000-8000-000000000000",
+                "name": "입력 세트 2",
+                "description": "다른 입력값",
+                "values": {
+                  "path": {
+                    "00000064-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "robot-002"
+                    }
+                  },
+                  "query": {
+                    "00000065-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "[0, 2, 3]"
+                    },
+                    "00000066-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "[4, 5]"
+                    },
+                    "00000067-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "false"
+                    },
+                    "00000068-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "한글 & test"
+                    }
+                  },
+                  "headers": {
+                    "00000069-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "first"
+                    },
+                    "0000006a-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "second"
+                    },
+                    "0000006b-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "value": "Bearer {{accessToken}}"
+                    },
+                    "0000006c-0000-4000-8000-000000000000": {
+                      "enabled": true,
+                      "secretRef": "00000018-0000-4000-8000-000000000000"
+                    }
+                  },
+                  "body": {
+                    "fields": {
+                      "0000006f-0000-4000-8000-000000000000": "2",
+                      "00000070-0000-4000-8000-000000000000": "false",
+                      "00000071-0000-4000-8000-000000000000": "",
+                      "00000072-0000-4000-8000-000000000000": "[\"A\", \"한글\"]",
+                      "00000074-0000-4000-8000-000000000000": "배송 로봇",
+                      "00000076-0000-4000-8000-000000000000": "다른 객체의 같은 키",
+                      "00000077-0000-4000-8000-000000000000": "",
+                      "0000007a-0000-4000-8000-000000000000": "1",
+                      "0000007c-0000-4000-8000-000000000000": "0",
+                      "0000007d-0000-4000-8000-000000000000": "false",
+                      "0000007e-0000-4000-8000-000000000000": "",
+                      "00000080-0000-4000-8000-000000000000": "[0,1]",
+                      "00000081-0000-4000-8000-000000000000": "[false,true]",
+                      "00000082-0000-4000-8000-000000000000": "",
+                      "00000083-0000-4000-8000-000000000000": "invalid"
+                    },
+                    "enabled": {
+                      "00000083-0000-4000-8000-000000000000": false
+                    }
+                  },
+                  "multipart": {}
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "non-finite-query-number",
+      "base": "main",
+      "expectedCode": "value",
+      "edits": [
+        {
+          "op": "set",
+          "file": "apis/0000000a-0000-4000-8000-000000000000.json",
+          "path": [
+            "presets",
+            0,
+            "values",
+            "query",
+            "00000065-0000-4000-8000-000000000000",
+            "value"
+          ],
+          "value": "[1e999]"
+        }
+      ]
+    }
+  ]
+}

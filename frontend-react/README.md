@@ -28,6 +28,20 @@ npm run dev
 
 경로 별칭 `@/`는 `src/`를 가리킵니다. `components.json`에는 shadcn/ui 경로와 스타일 설정을 관리합니다. 운영 호스팅에서는 React Router 경로를 직접 열거나 새로고침해도 `index.html`로 연결되도록 설정합니다.
 
+## 저장 포맷 검증
+
+`frontend-react`에서 `npm ci`로 기존 개발 의존성을 설치한 뒤, **프로젝트 루트**에서 실행합니다.
+
+```powershell
+node doc/validate-storage.mjs
+```
+
+현재 위치가 `frontend-react`라면 `node ../doc/validate-storage.mjs`로 실행할 수 있습니다.
+
+[v1 JSON 스키마](../doc/storage-v1.schema.json)와 [샘플](../doc/storage-v1.samples.json)을 사용해 필수 항목·타입, 파일명·ID·참조 관계, 중첩 필드 구조, 모든 입력 세트의 리터럴 값을 확인합니다. 정상 7건과 오류 검출 48건이 기대한 결과를 만족하면 `Storage v1: 55 samples passed (7 valid, 48 invalid)`를 출력하며, 검증 실패 시 종료 코드는 0이 아닙니다.
+
+검증 도구는 입력 데이터를 수정하거나 실제 작업 폴더에 파일을 쓰지 않습니다. 실제 저장·복구·React 모델 변환·변수 주입·HTTP 실행 검증은 별도 단계입니다. 상세 규칙과 검증 범위는 [저장 설계](../doc/storage-design.md)를 확인합니다.
+
 ## shadcn 스타일 리셋
 
 `frontend-react` 폴더에서 다음 명령을 실행합니다. 현재 프리셋은 `b1sAmVzcG`이며 Radix 기반의 `radix-nova` 스타일을 사용합니다.

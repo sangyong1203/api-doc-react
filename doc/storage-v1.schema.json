@@ -1,0 +1,749 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:apidoc:storage:v1",
+  "title": "API Doc storage format v1",
+  "description": "workspace.json, apis/<uuid>.json, environments/<uuid>.json. Cross-file and value validation: validate-storage.mjs.",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/workspace"
+    },
+    {
+      "$ref": "#/definitions/api"
+    },
+    {
+      "$ref": "#/definitions/environment"
+    }
+  ],
+  "definitions": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "ids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/uuid"
+      },
+      "uniqueItems": true
+    },
+    "folder": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "apiIds": {
+          "$ref": "#/definitions/ids"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "apiIds"
+      ]
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "apiIds": {
+          "$ref": "#/definitions/ids"
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/folder"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "apiIds",
+        "folders"
+      ]
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "formatVersion": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "collections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/collection"
+          }
+        },
+        "environmentIds": {
+          "$ref": "#/definitions/ids"
+        }
+      },
+      "required": [
+        "formatVersion",
+        "id",
+        "name",
+        "collections",
+        "environmentIds"
+      ]
+    },
+    "pathField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "required": {
+          "const": true
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "required",
+        "description"
+      ]
+    },
+    "headerField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "required",
+        "description"
+      ]
+    },
+    "queryField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "string array",
+            "number array",
+            "boolean array"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "arrayFormat": {
+          "enum": [
+            "repeat",
+            "comma"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "required",
+        "description",
+        "arrayFormat"
+      ]
+    },
+    "bodyField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "object",
+            "array",
+            "string array",
+            "number array",
+            "boolean array",
+            "object array",
+            "null"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "parentId": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "required",
+        "description",
+        "parentId"
+      ]
+    },
+    "multipartField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "file"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "required",
+        "description"
+      ]
+    },
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "enum": [
+            "json",
+            "multipart"
+          ]
+        },
+        "json": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/bodyField"
+          }
+        },
+        "multipart": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/multipartField"
+          }
+        }
+      },
+      "required": [
+        "format",
+        "json",
+        "multipart"
+      ]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pathField"
+          }
+        },
+        "query": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/queryField"
+          }
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/headerField"
+          }
+        },
+        "body": {
+          "$ref": "#/definitions/body"
+        }
+      },
+      "required": [
+        "path",
+        "query",
+        "headers",
+        "body"
+      ]
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "value": {
+          "type": "string"
+        },
+        "secretRef": {
+          "$ref": "#/definitions/uuid"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "value"
+          ]
+        },
+        {
+          "required": [
+            "secretRef"
+          ]
+        }
+      ]
+    },
+    "fileCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "bodyValue": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "secretRef": {
+              "$ref": "#/definitions/uuid"
+            }
+          },
+          "required": [
+            "secretRef"
+          ]
+        }
+      ]
+    },
+    "values": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/definitions/uuid"
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/cell"
+          }
+        },
+        "query": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/definitions/uuid"
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/cell"
+          }
+        },
+        "headers": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/definitions/uuid"
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/cell"
+          }
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/definitions/uuid"
+              },
+              "additionalProperties": {
+                "$ref": "#/definitions/bodyValue"
+              }
+            },
+            "enabled": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/definitions/uuid"
+              },
+              "additionalProperties": {
+                "type": "boolean"
+              }
+            }
+          },
+          "required": [
+            "fields",
+            "enabled"
+          ]
+        },
+        "multipart": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/definitions/uuid"
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "$ref": "#/definitions/cell"
+              },
+              {
+                "$ref": "#/definitions/fileCell"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "path",
+        "query",
+        "headers",
+        "body",
+        "multipart"
+      ]
+    },
+    "preset": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "description": {
+          "type": "string"
+        },
+        "values": {
+          "$ref": "#/definitions/values"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "values"
+      ]
+    },
+    "exampleField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "value"
+      ]
+    },
+    "errorExample": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "maxLength": 3
+        },
+        "description": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/exampleField"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "status",
+        "description",
+        "fields"
+      ]
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "formatVersion": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "method": {
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS"
+          ]
+        },
+        "url": {
+          "$ref": "#/definitions/name"
+        },
+        "request": {
+          "$ref": "#/definitions/request"
+        },
+        "response": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "success": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/bodyField"
+              }
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/errorExample"
+              }
+            }
+          },
+          "required": [
+            "success",
+            "errors"
+          ]
+        },
+        "documentation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "requestExample": {
+              "type": "string"
+            },
+            "responseExample": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "description",
+            "requestExample",
+            "responseExample"
+          ]
+        },
+        "defaultPresetId": {
+          "$ref": "#/definitions/uuid"
+        },
+        "presets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/preset"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "formatVersion",
+        "id",
+        "name",
+        "method",
+        "url",
+        "request",
+        "response",
+        "documentation",
+        "defaultPresetId",
+        "presets"
+      ]
+    },
+    "variable": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "value": {
+          "type": "string"
+        },
+        "secretRef": {
+          "$ref": "#/definitions/uuid"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "enabled"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "value"
+          ]
+        },
+        {
+          "required": [
+            "secretRef"
+          ]
+        }
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "formatVersion": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/definitions/uuid"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/variable"
+          }
+        }
+      },
+      "required": [
+        "formatVersion",
+        "id",
+        "name",
+        "variables"
+      ]
+    }
+  }
+}
