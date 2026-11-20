@@ -30,6 +30,8 @@ Windows PowerShell에서 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`
 | `npm run desktop:dev` | Electron 코드 컴파일 후 Vite와 PC 앱 함께 실행 |
 | `npm run desktop:build` | Main·Preload를 `dist-electron/`에 컴파일 |
 | `npm run desktop:test` | Electron 코드 컴파일 후 IPC 호출자·입력 보안 테스트 |
+| `npm run desktop:sqlite-test` | 개발 Electron에서 임시 SQLite DB 저장·재실행 검증 |
+| `npm run desktop:sqlite-test:packaged` | 패키징 앱의 ASAR 내부 SQLite Worker 검증 |
 | `npm run desktop:package` | 전체 빌드 후 Windows x64 실행 폴더 생성 |
 
 린트는 타사 배포 파일 `src/lib/xlsx/XLSX.min.js` 한 파일을 제외하며, 직접 작성한 Excel 모듈과 나머지 프로젝트 코드는 검사합니다.
@@ -67,13 +69,27 @@ node electron/smoke.mjs
 
 IPC의 고정 메서드·공통 오류·작업 공간 핸들·파일/DB 접근 경계는 [IPC 계약](../doc/ipc-contract.md)을 따릅니다. `src/types/desktopData.ts`의 데이터 API는 후속 구현용 명세이며 현재 화면에 노출하지 않습니다. 실제 `DesktopBridge`는 종료 확인과 버전 조회만 제공합니다. `npm.cmd run desktop:test`로 배포/개발 URL, 다른 창·iframe·분리된 프레임, 잘못된 종료 상태의 거부를 검사합니다.
 
+### 내장 SQLite 호환성 검증
+
+`frontend-react`에서 실행합니다. 패키징 검증은 먼저 최신 코드를 패키징해야 합니다.
+
+```powershell
+npm.cmd run desktop:sqlite-test
+npm.cmd run desktop:package
+npm.cmd run desktop:sqlite-test:packaged
+```
+
+다른 경로의 패키징 앱은 `APIDOC_TEST_EXECUTABLE`에 실행 파일의 절대 경로를 지정합니다. 검증마다 `%TEMP%/apidoc-sqlite-proof-*`에 별도 프로필과 DB를 만들고 두 앱 프로세스를 순서대로 실행합니다. DB 전용 Worker에서 Unicode·JSON 값, 바인딩, WAL, 커밋·제약 오류 후 롤백, 무결성, 재실행 후 데이터 보존과 읽기 전용 쓰기 거부를 확인합니다. 임시 경로는 결과와 함께 출력하며 파일은 확인용으로 남깁니다.
+
+패키징 검증은 로컬 Main 디버거를 통해 ASAR 안의 검사 모듈을 실행합니다. 일반 앱의 Main·Preload는 검사 모듈을 불러오지 않으며 DB API를 화면에 노출하지 않습니다. 현재 검증 기준은 Electron `45.4.1`·내장 Node `24.22.3`·SQLite `3.54.1`입니다. 실제 개인 데이터 테이블·마이그레이션·백업·강제 종료 복구 검증은 후속 작업입니다.
+
 ## PC 앱과 저장 방향
 
 - 기존 React UI를 Electron 독립 창에 연결하고 파일·네트워크·DB 처리는 제한된 Preload/IPC를 통해 앱 내부에서 수행합니다.
 - API 명세·문서·입력 세트·공유 환경은 작업 폴더의 JSON 파일에 저장하여 외부 Git 도구로 공유합니다.
 - 개인 설정·최근 작업 공간·초안·저장 이력은 앱 사용자 데이터 폴더의 SQLite에 내장 `node:sqlite`로 보관합니다. 인증 비밀값과 업로드 파일 실체는 기본 메모리로 관리합니다.
 - 개발 환경은 위 Node 24 버전을 사용합니다. Electron 내장 Node는 개발 PC의 Node와 별개이며, 앱에서 사용하는 Node API는 선택한 Electron 안정판에서 검증합니다.
-- Electron/SQLite 설치본 검증·DB 마이그레이션·백업·이력 보관 정책은 후속 작업입니다. 상세 기준은 [PC 앱 설계](../doc/desktop-design.md)와 [저장 설계](../doc/storage-design.md)를 따릅니다.
+- 개발/패키징 앱의 SQLite 기본 호환성을 확인했으며 설치·업데이트 후 데이터 보존·DB 마이그레이션·백업·이력 보관 정책은 후속 작업입니다. 상세 기준은 [PC 앱 설계](../doc/desktop-design.md)와 [저장 설계](../doc/storage-design.md)를 따릅니다.
 
 ## 저장 포맷 검증
 
