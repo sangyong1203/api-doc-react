@@ -17,7 +17,7 @@
 
 ## 2. 런타임과 의존성
 
-- 개발 환경은 Node.js 24 최신 패치를 기준으로 전환한다. 현재 설치·검증된 환경은 22.15.0이며, 실제 업그레이드는 별도 작업이다.
+- 개발 환경은 Node.js 24 계열의 검증된 패치를 사용한다. 정확한 개발 버전은 `frontend-react/.nvmrc`·`package.json`을 따르고 환경 전환·검증 결과는 [개발 진행 현황](progress.md)의 01.09에서 관리한다.
 - Electron 안정판의 정확한 버전은 도입 시 지원 상태와 내장 Node를 확인하고 고정한다. 개발 PC의 Node와 Electron 내장 Node는 별개다.
 - 개인 DB에는 Electron 내장 `node:sqlite`를 사용한다. 외부 SQLite 네이티브 모듈을 추가하지 않으므로 해당 모듈의 ABI 재빌드가 필요하지 않다.
 - Node 24 공식 문서에서 `node:sqlite`는 Stability 1.2(Release candidate)다. 필요한 API가 선택한 Electron에 포함돼 있는지 실제 런타임과 설치본에서 검증한다.

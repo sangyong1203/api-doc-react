@@ -6,7 +6,7 @@ REST API를 등록·호출·문서화·테스트하고, API별 여러 payload �
 
 ## 설치 및 실행
 
-개발 기준은 Node.js `22.15.0`, npm `11.5.1`입니다. 저장된 패키지 버전은 `package.json`과 `package-lock.json`으로 관리합니다.
+개발 기준은 Node.js `24.22.3`, npm `11.19.1`입니다. `.nvmrc`는 Node 버전을 고정하며 `engines.node`는 `>=24.22.3 <25`로 24 계열을 사용합니다. 저장된 패키지 버전은 `package.json`과 `package-lock.json`으로 관리합니다.
 
 프로젝트 루트에서 실행합니다.
 
@@ -18,6 +18,8 @@ npm run dev
 
 터미널에 표시된 로컬 주소로 접속합니다. 기본 주소는 `http://127.0.0.1:5173`이며 사용 중이면 다음 포트를 사용합니다.
 
+Windows PowerShell에서 실행 정책 때문에 `npm`이 차단되면 `npm.cmd`를 사용합니다. 의존성을 재설치하기 전에는 해당 프로젝트의 개발 서버를 종료해 네이티브 모듈 파일 점유를 해제합니다.
+
 | 명령어 | 동작 |
 | --- | --- |
 | `npm run dev` | 개발 서버 실행 |
@@ -26,6 +28,8 @@ npm run dev
 | `npm run build` | 타입 검사 후 `dist/`에 배포 파일 생성 |
 | `npm run preview` | 빌드 결과를 로컬에서 확인 |
 
+린트는 타사 배포 파일 `src/lib/xlsx/XLSX.min.js` 한 파일을 제외하며, 직접 작성한 Excel 모듈과 나머지 프로젝트 코드는 검사합니다.
+
 경로 별칭 `@/`는 `src/`를 가리킵니다. `components.json`에는 shadcn/ui 경로와 스타일 설정을 관리합니다. 위 명령은 React UI 개발용이며 Electron 실행·설치 파일 생성 명령은 아직 제공하지 않습니다.
 
 ## PC 앱과 저장 방향
@@ -33,7 +37,7 @@ npm run dev
 - 기존 React UI를 Electron 독립 창에 연결하고 파일·네트워크·DB 처리는 제한된 Preload/IPC를 통해 앱 내부에서 수행합니다.
 - API 명세·문서·입력 세트·공유 환경은 작업 폴더의 JSON 파일에 저장하여 외부 Git 도구로 공유합니다.
 - 개인 설정·최근 작업 공간·초안·저장 이력은 앱 사용자 데이터 폴더의 SQLite에 내장 `node:sqlite`로 보관합니다. 인증 비밀값과 업로드 파일 실체는 기본 메모리로 관리합니다.
-- 개발 Node.js는 24 최신 패치로 전환할 예정입니다. 현재 위 설치 절차와 버전 설정은 기존 검증 환경을 나타내며 아직 업그레이드하지 않았습니다.
+- 개발 환경은 위 Node 24 버전을 사용합니다. Electron 내장 Node는 개발 PC의 Node와 별개이며, 앱에서 사용하는 Node API는 선택한 Electron 안정판에서 검증합니다.
 - Electron/SQLite 설치본 검증·DB 마이그레이션·백업·이력 보관 정책은 후속 작업입니다. 상세 기준은 [PC 앱 설계](../doc/desktop-design.md)와 [저장 설계](../doc/storage-design.md)를 따릅니다.
 
 ## 저장 포맷 검증
