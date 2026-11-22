@@ -1,24 +1,12 @@
-import type { WorkspaceConnection, WorkspaceSnapshot } from '@/types/desktopData'
-import type { BodyField, FieldSpec, HttpMethod, RequestField, SampleRequest, Workspace, WorkspaceCollection, WorkspaceFolder } from './types'
+import type { SharedApi, SharedValues, WorkspaceConnection, WorkspaceSnapshot } from '@/types/desktopData'
+import type { RequestField, SampleRequest, Workspace, WorkspaceCollection, WorkspaceFolder } from './types'
 import type { PayloadPreset } from '@/features/payload-presets/types'
 import type { Environment } from '@/features/environments/types'
 
 // Main에서 공유 v1 검증을 마친 snapshot의 화면 변환 전용입니다. 원본 JSON은 별도로 유지합니다.
-type Field = { id: string; name: string; type: FieldSpec['type']; required: boolean; description: string; arrayFormat?: 'repeat' | 'comma' }
-type Cell = { enabled: boolean; value?: string; secretRef?: string }
-type Values = {
-  path: Record<string, Cell>; query: Record<string, Cell>; headers: Record<string, Cell>
-  body: { fields: Record<string, string | { secretRef: string }>; enabled: Record<string, boolean> }
-  multipart: Record<string, Cell>
-}
-type StoredApi = {
-  id: string; name: string; method: HttpMethod; url: string
-  request: { path: Field[]; query: Field[]; headers: Field[]; body: { format: 'json' | 'multipart'; json: BodyField[]; multipart: Field[] } }
-  response: { success: BodyField[]; errors: SampleRequest['errorResponses'] }
-  documentation: NonNullable<SampleRequest['documentation']>
-  defaultPresetId: string
-  presets: Array<{ id: string; name: string; description: string; values: Values }>
-}
+type Field = SharedApi['request']['path'][number]
+type Cell = SharedValues['path'][string]
+type StoredApi = SharedApi
 export type FolderWorkspace = {
   workspace: Workspace; connection: WorkspaceConnection; snapshot: WorkspaceSnapshot
   collections: WorkspaceCollection[]; folders: WorkspaceFolder[]; requests: SampleRequest[]
@@ -77,4 +65,44 @@ export function decodeFolderWorkspace(connection: WorkspaceConnection, snapshot:
       return { id: variable.id, name: variable.name, enabled: variable.enabled, value: variable.value ?? '' } }) }
   })
   return { workspace: { id: `${connection.localFolderId}:${connection.workspaceId}`, name: connection.name }, connection, snapshot, collections, folders, requests, presetsByApi, defaultPresets, environments, hasSecretRefs }
+}
+
+/** 기존 API의 공통 명세와 선택 세트만 공유 DTO로 구성합니다. 화면 객체 전체를 전송하지 않습니다. */
+export function encodeApiEdit(snapshot: WorkspaceSnapshot, request: SampleRequest, selectedPresetId: string): SharedApi {
+  const document = snapshot.apis.find(document => document.id === request.id)
+  if (!document) { throw new Error('저장할 API 원본을 찾을 수 없습니다.') }
+  const api = JSON.parse(document.json) as SharedApi
+  const selected = api.presets.find(preset => preset.id === selectedPresetId)
+  if (!selected) { throw new Error('저장할 입력 세트를 선택하세요.') }
+  const spec = (row: RequestField, query = false, path = false) => {
+    const field = request.schema?.fields[row.id]
+    return { id: row.id, name: row.name, type: field?.type ?? 'string', required: path || (field?.required ?? false), description: field?.description ?? '',
+      ...(query ? { arrayFormat: field?.queryArrayFormat ?? 'repeat' } : {}) }
+  }
+  const rows = (rows: RequestField[], originals: Record<string, Cell>, fileFields = false) => Object.fromEntries(rows.map(row => {
+    const old = originals[row.id]
+    if (old?.secretRef && row.value !== '') { throw new Error('비밀 참조의 실제값은 공유 파일에 저장할 수 없습니다. 해당 입력을 비운 뒤 저장해 주세요.') }
+    return [row.id, fileFields && request.schema?.fields[row.id]?.type === 'file' ? { enabled: row.enabled }
+      : old?.secretRef ? { enabled: row.enabled, secretRef: old.secretRef } : { enabled: row.enabled, value: row.value }]
+  }))
+  const body = request.schema?.body ?? []
+  const bodyFields = Object.fromEntries(body.filter(field => !['object', 'array', 'object array'].includes(field.type)).map(field => {
+    const old = selected.values.body.fields[field.id], value = request.bodyValues?.[field.id] ?? ''
+    if (typeof old === 'object' && value !== '') { throw new Error('비밀 참조의 실제값은 공유 파일에 저장할 수 없습니다. 해당 입력을 비운 뒤 저장해 주세요.') }
+    return [field.id, typeof old === 'object' ? { secretRef: old.secretRef } : value]
+  }))
+  const allowed = (values: SharedValues): SharedValues => {
+    const pick = <T,>(map: Record<string, T>, ids: string[]) => Object.fromEntries(Object.entries(map).filter(([id]) => ids.includes(id)))
+    return { path: pick(values.path, request.pathParams.map(row => row.id)), query: pick(values.query, request.queryParams.map(row => row.id)), headers: pick(values.headers, request.headers.map(row => row.id)),
+      body: { fields: pick(values.body.fields, body.map(field => field.id)), enabled: pick(values.body.enabled, body.map(field => field.id)) }, multipart: pick(values.multipart, (request.multipartFields ?? []).map(row => row.id)) }
+  }
+  const values: SharedValues = { path: rows(request.pathParams, selected.values.path), query: rows(request.queryParams, selected.values.query), headers: rows(request.headers, selected.values.headers),
+    body: { fields: bodyFields, enabled: Object.fromEntries(Object.entries(request.bodyEnabled ?? {}).filter(([id]) => body.some(field => field.id === id))) }, multipart: rows(request.multipartFields ?? [], selected.values.multipart, true) }
+  return { formatVersion: 1, id: api.id, name: api.name, method: request.method, url: request.url,
+    request: { path: request.pathParams.map(row => spec(row, false, true)), query: request.queryParams.map(row => spec(row, true)), headers: request.headers.map(row => spec(row)),
+      body: { format: request.bodyFormat ?? 'json', json: body.map(({ id, name, type, required, description, parentId }) => ({ id, name, type, required, description, parentId })), multipart: (request.multipartFields ?? []).map(row => spec(row)) } },
+    response: { success: (request.responseFields ?? []).map(({ id, name, type, required, description, parentId }) => ({ id, name, type, required, description, parentId })),
+      errors: request.errorResponses.map(({ id, name, status, description, fields }) => ({ id, name, status, description, fields: fields.map(({ id, name, enabled, value }) => ({ id, name, enabled, value })) })) },
+    documentation: { description: request.documentation?.description ?? '', requestExample: request.documentation?.requestExample ?? '', responseExample: request.documentation?.responseExample ?? '' },
+    defaultPresetId: api.defaultPresetId, presets: api.presets.map(preset => ({ id: preset.id, name: preset.name, description: preset.description, values: preset.id === selectedPresetId ? values : allowed(preset.values) })) }
 }

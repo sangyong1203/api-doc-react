@@ -69,11 +69,28 @@ export type DeleteDocument = {
   id: EntityId
   expectedHash: ContentHash
 }
+export type SharedCell = { enabled: boolean; value?: string; secretRef?: string }
+export type SharedValues = {
+  path: Record<string, SharedCell>; query: Record<string, SharedCell>; headers: Record<string, SharedCell>
+  body: { fields: Record<string, string | { secretRef: string }>; enabled: Record<string, boolean> }
+  multipart: Record<string, SharedCell>
+}
+export type SharedField = { id: string; name: string; type: import('../features/workspace/types.js').FieldType; required: boolean; description: string; arrayFormat?: 'repeat' | 'comma' }
+export type SharedApi = {
+  formatVersion: 1; id: string; name: string; method: import('../features/workspace/types.js').HttpMethod; url: string
+  request: { path: SharedField[]; query: SharedField[]; headers: SharedField[]; body: { format: 'json' | 'multipart'; json: import('../features/workspace/types.js').BodyField[]; multipart: SharedField[] } }
+  response: { success: import('../features/workspace/types.js').BodyField[]; errors: import('../features/workspace/types.js').ErrorResponseExample[] }
+  documentation: { description: string; requestExample: string; responseExample: string }
+  defaultPresetId: string
+  presets: Array<{ id: string; name: string; description: string; values: SharedValues }>
+}
 export type WorkspaceCommit = {
   handle: WorkspaceHandle
   /** 응답 유실 후에도 유지하는 저장 작업 UUID. requestId와 별개입니다. */
   operationId: EntityId
   expectedRevision: ContentHash
+  /** 현재 노출된 저장은 기존 API 한 개이며 선택 세트를 필수로 전달합니다. */
+  selectedPresetId?: EntityId
   changes: Array<PutDocument | DeleteDocument>
 }
 export type CommittedWorkspace = {
@@ -81,7 +98,7 @@ export type CommittedWorkspace = {
   revision: ContentHash
   documents: Array<{ kind: DocumentKind; id: EntityId; hash: ContentHash | null }>
   /** 파일 저장과 개인 DB는 별도 결과입니다. 이력 실패를 파일 저장 실패로 바꾸지 않습니다. */
-  history: 'recorded' | 'not-required' | 'failed'
+  history: 'recorded' | 'not-required' | 'failed' | 'unknown'
 }
 export type CommitStatus =
   | { status: 'pending' }

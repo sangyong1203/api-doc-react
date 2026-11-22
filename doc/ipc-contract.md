@@ -6,8 +6,8 @@
 
 ## 1. 계약과 실제 노출의 구분
 
-- 현재 `window.apidocDesktop`에는 내장 버전·종료 상태 조회/응답과 `workspace.open/create/snapshot/release`를 제공한다. 기존 종료 확인 동작은 유지한다.
-- 파일·개인 저장소의 전체 명세는 `frontend-react/src/types/desktopData.ts`의 `DesktopDataApi`로 정의한다. `DesktopBridge`에는 구현한 작업 폴더 메서드 네 개만 연결하며 파일 편집 저장·외부 변경 감지·개인 데이터 API는 노출하지 않는다.
+- 현재 `window.apidocDesktop`에는 내장 버전·종료 상태 조회/응답과 `workspace.open/create/snapshot/release/commit/commitStatus`를 제공한다. 기존 종료 확인 동작은 유지한다.
+- 파일·개인 저장소의 전체 명세는 `frontend-react/src/types/desktopData.ts`의 `DesktopDataApi`로 정의한다. `DesktopBridge`에는 구현한 작업 폴더 메서드 여섯 개를 연결한다. 저장은 기존 API 한 개의 편집에 한정하며 외부 변경 감지·개인 데이터 직접 호출 API는 노출하지 않는다.
 - 아래 메서드는 각 기능의 Main 처리·입력/결과 검증·실패 경로를 구현한 뒤에만 Preload에 추가한다. 미구현 기능이 성공한 것처럼 반환하는 임시 API는 제공하지 않는다.
 - Preload는 고정 채널에 연결한 작업별 함수만 노출한다. Renderer에는 `invoke(channel, ...)`, `ipcRenderer`, 이벤트 객체, SQL·DB 경로·임의 파일 읽기/쓰기 기능을 제공하지 않는다.
 - 실제 API 요청 실행의 주소·파일 업로드·취소·응답 전송 계약은 05 단계에서 별도 정의한다. 작업 폴더 핸들은 임의 네트워크/업로드 파일 접근 권한으로 사용하지 않는다.
@@ -38,7 +38,7 @@ type DesktopResult<T> =
 | `workspace.open` / `workspace:open` | `{source:'dialog'}` 또는 `{source:'recent', localFolderId}` | 취소 또는 connection·snapshot |
 | `workspace.create` / `workspace:create` | `{name}`. 실제 경로는 네이티브 폴더 선택창으로 선택 | 취소 또는 connection·snapshot |
 | `workspace.snapshot` / `workspace:snapshot` | `{handle}` | 검증된 manifest·API·환경 원문과 파일별 hash·전체 revision |
-| `workspace.commit` / `workspace:commit` | `{handle, operationId, expectedRevision, changes}` | 작업 ID·새 revision·변경 파일 hash·개인 이력 기록 결과 |
+| `workspace.commit` / `workspace:commit` | `{handle, operationId, expectedRevision, selectedPresetId, changes}` | 작업 ID·새 revision·변경 파일 hash·개인 이력 기록 결과 |
 | `workspace.commitStatus` / `workspace:commit-status` | `{handle, operationId}` | pending / committed / failed / unknown |
 | `workspace.changes` / `workspace:changes` | `{handle, afterRevision}` | `{changed, revision}`. 변경 시 snapshot 재조회 |
 | `workspace.release` / `workspace:release` | `{handle}` | null. 핸들만 해제하며 파일·초안·이력은 삭제하지 않음 |
@@ -63,6 +63,10 @@ type DesktopResult<T> =
 
 ### 저장과 응답 유실
 
+- 현재 앱의 `commit`은 기존 API 한 개의 put만 허용한다. `selectedPresetId`가 해당 API에 속하는지 검사하고, 원본 snapshot의 이름·위치·기본 세트·세트 목록을 유지한다. 다른 세트의 값은 삭제된 필드 ID 정리 외에는 수정하지 못한다. 신규 API·manifest·환경 변경·delete는 내부 파일 계층만 구현돼 있으며 IPC에서는 거부한다.
+- Renderer는 공통 명세·선택 세트 값을 허용 필드로 새로 구성한다. Main이 최종 공유 문서 묶음·모든 세트 값·원본 비밀 참조를 재검증한다. 일반 입력은 공유 값이며 기존 `secretRef` 필드의 실제값 입력을 저장하지 않는다. File·selectionId·로컬 경로·JSON 원문 보기 상태는 저장 DTO에 포함하지 않는다. 비밀 참조 생성/실제값 관리 UI는 후속 범위다.
+- 저장 버튼은 요청 중 중복 저장을 막고, 성공 시 실제 제출한 복사본까지만 저장 기준을 갱신한다. 추가 편집·실패·충돌은 현재 입력을 유지한다. 저장 timeout은 30초이며 결과 불명확 시 같은 버튼은 `commitStatus`만 조회한다. 쓰기를 자동 재전송하지 않는다.
+
 - `put`에는 문서 kind·UUID·원문 JSON·기대 hash를 포함한다. 신규 생성만 `expectedHash: null`로 파일 부재를 요구한다. `delete`는 API·환경에만 허용하고 기대 hash를 필수로 받는다. manifest 삭제는 허용하지 않는다.
 - Main은 변경을 적용한 최종 문서 묶음을 검증한다. 같은 요청의 중복 대상, manifest/API 불일치, 모든 세트의 타입 오류를 거부한다. Renderer가 JSON 원문으로 준 필드가 파일 경로에 영향을 주지 않게 한다.
 - 저장 시작 전 전체 revision과 변경 파일 hash를 재검사한다. 같은 폴더의 쓰기는 직렬화한다. 충돌은 강제 덮어쓰기·자동 병합 없이 `FILE_CONFLICT`로 반환한다.
@@ -70,7 +74,7 @@ type DesktopResult<T> =
 - 다중 파일 변경은 앱 사용자 데이터의 복구 저널·기존 바이트·기대 hash로 조정한다. 미완료 저널이 있으면 해당 공간의 새 쓰기를 막고 `WORKSPACE_RECOVERY_REQUIRED`로 구분한다.
 - 결과를 받지 못한 쓰기는 실패로 단정하거나 자동 재전송하지 않는다. 새 핸들로 같은 로컬 폴더를 연 뒤 작업 상태를 조회한다. unknown이면 snapshot·파일 기준을 비교하고 사용자 조정 후 새 저장을 시작한다.
 - 파일 저장과 개인 DB는 하나의 트랜잭션이 아니다. `history: 'failed'`라도 공유 파일은 committed일 수 있다. UI는 파일 성공·개인 이력 실패를 따로 안내하며 파일 저장을 반복하지 않는다.
-- 핸들 해제는 이미 시작한 디스크 작업을 중간에 강제 중단하지 않는다. 복구 저널과 작업 상태는 보존한다. 영구적인 exactly-once 처리를 보장하지 않는다. 내부 파일 계층의 저널·복구 방향·보관/용량 기준은 [파일 저장 설계](storage-design.md#51-파일-저장-계층과-복구-기록)를 따른다. 현재 `WorkspaceWriter`는 Main 전용 내부 계층이며 commit/commitStatus/복구를 Preload에 노출하지 않는다. 파일 결과와 개인 이력 결과는 상위 계층에서 조립한다.
+- 핸들 해제는 이미 시작한 디스크 작업을 중간에 강제 중단하지 않는다. 복구 저널과 작업 상태는 보존한다. 영구적인 exactly-once 처리를 보장하지 않는다. 내부 파일 계층의 저널·복구 방향·보관/용량 기준은 [파일 저장 설계](storage-design.md#51-파일-저장-계층과-복구-기록)를 따른다. 현재 `WorkspaceWriter`는 Main 전용 내부 계층이고 `WorkspaceService`가 파일 결과와 선택 세트의 개인 이력 결과를 조립한다. 파일 성공 뒤 이력 실패는 `history: failed`, 재실행/캐시 만료 등으로 이력 결과를 확정하지 못하면 `history: unknown`으로 구분한다. 복구 API는 Preload에 노출하지 않는다. 기존 종료 확인을 거친 뒤 파일 작업·개인 이력이 끝날 때까지 기다리고 DB를 닫는다.
 
 ## 4. 개인 저장소 메서드
 

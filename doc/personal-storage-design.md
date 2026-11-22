@@ -18,7 +18,7 @@
 
 Main이 한 DB Worker를 소유하며 Worker만 연결·SQL·트랜잭션을 처리한다. Main은 검증한 작업 DTO를 전달하고 Renderer에 SQL·DB 경로·임의 키 접근을 노출하지 않는다.
 
-현재 앱은 첫 작업 폴더 요청에서 개인 DB를 열고 정상 종료 시 Worker 종료를 기다린다. 연결한 폴더의 경로·workspace ID·표시 이름만 내부 `rememberWorkspace`/`workspacePath`로 관리하며 경로는 Renderer에 반환하지 않는다. 편집값 자동 저장·개인 설정/초안/이력 UI·백업/복구 UI는 아직 연결하지 않는다.
+현재 앱은 첫 작업 폴더 요청에서 개인 DB를 열고 정상 종료 시 Worker 종료를 기다린다. 연결한 폴더의 경로·workspace ID·표시 이름만 내부 `rememberWorkspace`/`workspacePath`로 관리하며 경로는 Renderer에 반환하지 않는다. 기존 API 저장 성공 뒤 Main이 실제 저장 복사본의 공통 명세·선택 세트로 개인 이력을 기록한다. 파일 저장과 이력 실패를 구분하며 파일을 자동 반복 저장하지 않는다. 편집값 자동 저장·개인 설정/초안/이력 조회 UI·백업/복구 UI는 아직 연결하지 않는다.
 
 - 연결은 `DatabaseSync`, 외래 키 활성화, 확장 로드 비활성화. `STRICT` 테이블과 매개변수 바인딩 사용.
 - 정상 쓰기 모드에서 `journal_mode=WAL`, `synchronous=FULL`, 잠금 대기 상한 1,000ms를 적용하고 설정 결과를 확인한다. WAL 활성화 전에 기존 DB의 식별·버전을 검사한다.
@@ -97,7 +97,7 @@ Main이 한 DB Worker를 소유하며 Worker만 연결·SQL·트랜잭션을 처
 v1 본문은 `{payloadVersion, common, selectedPreset: {id, name, values}}`다. common은 API 초안과 같은 명세·문서 구조지만 성공한 공유 파일 검증을 통과한 저장 복사본을 사용한다. 요약과 JSON의 메서드·URL·세트 식별이 일치해야 한다.
 
 - API 전체 파일이나 SampleRequest를 그대로 저장하지 않는다. 다른 세트의 값·API 이름·위치·실행 결과·선택 파일은 복원 데이터에 포함하지 않는다.
-- 파일 저장 작업이 성공한 뒤 Main이 실제 저장 복사본과 선택 세트로 추가한다. 신규 저장 흐름에는 선택 세트를 내부 저장 문맥으로 전달하는 계약이 필요하며, 현재 WorkspaceCommit에는 해당 정보가 없으므로 02.05 연동 전에 구체화한다. 임의 이력 추가 API를 열지 않는다.
+- 파일 저장 작업이 성공한 뒤 Main이 실제 저장 복사본과 선택 세트로 추가한다. 신규 저장 흐름에는 선택 세트를 내부 저장 문맥으로 전달하는 계약이 필요하며, 현재 단일 API 편집 저장은 `WorkspaceCommit.selectedPresetId`를 필수로 받고 원본 API의 소유 관계를 검증한다. 선택 세트 ID도 파일 작업의 중복 비교에 포함한다. 임의 이력 추가 API를 열지 않는다.
 - 같은 operationId/API 재처리는 UNIQUE 키로 중복을 막고 기존 payload와 일치하는지 확인한다. 다른 내용이면 충돌로 처리한다. 파일 작업 상태는 별도 저널을 기준으로 한다.
 - 복원 시 common과 values를 현재 폼·현재 선택 세트에 적용한다. 저장 당시 preset ID로 현재 선택을 바꾸지 않으며 API ID·이름·위치·다른 세트·실행 결과는 유지한다.
 - 동일한 시각의 이력은 UUID 내림차순으로 안정 정렬한다. 시스템 시계 역행까지 실제 생성 순서로 보장한다고 표시하지 않는다.

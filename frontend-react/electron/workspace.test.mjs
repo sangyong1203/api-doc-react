@@ -166,3 +166,114 @@ test('IPC 결과는 잘못된 ID·경로·stack을 반사하지 않고 안전한
   const failed = await workspaceResult({ requestId, payload: {} }, true, () => { throw new Error('/private/secret/path') })
   assert.equal(failed.requestId, requestId); assert.equal(failed.error.message.includes('private'), false)
 })
+
+async function saveFixture(t, historyFailure = false) {
+  const f = await fixture(t)
+  const database = await openPersonalDatabase({ userData: path.join(f.directory, 'save-profile'), appVersion: '0.1.0' })
+  t.after(() => database.close())
+  const { WorkspaceWriter } = require('../dist-electron/electron/workspace-writer.cjs')
+  const writer = await WorkspaceWriter.open(path.join(f.directory, 'save-profile'))
+  const supplied = historyFailure ? { ...database, personal: { ...database.personal, recordHistory: async () => { throw Error('private database failure') } } } : database
+  const owner = { windowId: 91, frame: {} }
+  const service = new WorkspaceService(supplied, async () => f.selected, () => true, writer)
+  const opened = await service.open(owner, { source: 'dialog' })
+  const apiDocument = opened.snapshot.apis[0], api = JSON.parse(apiDocument.json)
+  api.url = '{{baseUrl}}/saved-through-service'
+  const payload = { handle: opened.connection.handle, operationId: randomUUID(), expectedRevision: opened.snapshot.revision, selectedPresetId: api.defaultPresetId,
+    changes: [{ action: 'put', kind: 'api', id: api.id, expectedHash: apiDocument.hash, json: JSON.stringify(api) }] }
+  return { ...f, database, writer, owner, service, opened, api, payload }
+}
+
+test('Main 파일 저장·상태 조회·SQLite 이력·재열기에서 현재 API/선택 세트 문맥이 일치한다', async t => {
+  const f = await saveFixture(t)
+  f.payload.selectedPresetId = f.api.presets.find(preset => preset.id !== f.api.defaultPresetId).id
+  assert.notEqual(f.payload.selectedPresetId, f.api.defaultPresetId)
+  const result = await f.service.commit(f.owner, f.payload)
+  assert.equal(result.history, 'recorded')
+  const reopened = await f.service.snapshot(f.owner, { handle: f.payload.handle })
+  assert.equal(reopened.revision, result.revision)
+  assert.equal(JSON.parse(reopened.apis.find(document => document.id === f.api.id).json).url, f.api.url)
+  const scope = { localFolderId: f.opened.connection.localFolderId, workspaceId: f.opened.connection.workspaceId }
+  const history = await f.database.personal.history({ scope, apiId: f.api.id })
+  assert.equal(history.items.length, 1)
+  const entry = await f.database.personal.historyEntry({ scope, apiId: f.api.id, historyId: history.items[0].id })
+  const json = JSON.parse(entry.json)
+  assert.equal(json.common.url, f.api.url)
+  assert.equal(json.selectedPreset.id, f.payload.selectedPresetId)
+  assert.deepEqual(await f.service.commit(f.owner, f.payload), result)
+  assert.equal((await f.database.personal.history({ scope, apiId: f.api.id })).items.length, 1)
+  assert.deepEqual(await f.service.commitStatus(f.owner, { handle: f.payload.handle, operationId: f.payload.operationId }), { status: 'committed', result })
+})
+
+test('다른 창·잘못된 선택 세트·API 생성/다중 변경·다른 세트 덮어쓰기를 거부', async t => {
+  const f = await saveFixture(t)
+  await assert.rejects(f.service.commit({ ...f.owner, frame: {} }, f.payload), code('WORKSPACE_NOT_OPEN'))
+  await assert.rejects(f.service.commit(f.owner, { ...f.payload, selectedPresetId: randomUUID() }), code('INVALID_REQUEST'))
+  await assert.rejects(f.service.commit(f.owner, { ...f.payload, changes: [f.payload.changes[0], f.payload.changes[0]] }), code('INVALID_REQUEST'))
+  await assert.rejects(f.service.commit(f.owner, { ...f.payload, changes: [{ ...f.payload.changes[0], expectedHash: null }] }), code('INVALID_REQUEST'))
+  const candidate = JSON.parse(f.payload.changes[0].json)
+  const other = candidate.presets.find(preset => preset.id !== f.payload.selectedPresetId)
+  assert.ok(other)
+  other.name = 'not selected'
+  await assert.rejects(f.service.commit(f.owner, { ...f.payload, changes: [{ ...f.payload.changes[0], json: JSON.stringify(candidate) }] }), code('INVALID_REQUEST'))
+  assert.equal((await readWorkspaceSnapshot(f.root)).revision, f.opened.snapshot.revision)
+})
+
+test('비밀 참조의 리터럴 치환과 다른 세트 값 변경을 Main에서 다시 거부', async t => {
+  const f = await saveFixture(t)
+  const candidate = JSON.parse(f.payload.changes[0].json)
+  const selected = candidate.presets.find(preset => preset.id === f.payload.selectedPresetId)
+  const channels = ['path', 'query', 'headers', 'multipart']
+  let changed = false
+  for (const channel of channels) {
+    const secret = Object.entries(selected.values[channel]).find(([, cell]) => cell.secretRef)
+    if (secret) { selected.values[channel][secret[0]] = { enabled: secret[1].enabled, value: 'private-token-must-not-persist' }; changed = true; break }
+  }
+  assert.equal(changed, true)
+  await assert.rejects(f.service.commit(f.owner, { ...f.payload, changes: [{ ...f.payload.changes[0], json: JSON.stringify(candidate) }] }), code('INVALID_REQUEST'))
+  assert.equal((await readWorkspaceSnapshot(f.root)).revision, f.opened.snapshot.revision)
+})
+
+test('개인 이력 실패를 파일 실패로 바꾸지 않고 중복 저장도 파일/이력을 반복하지 않는다', async t => {
+  const f = await saveFixture(t, true)
+  const result = await f.service.commit(f.owner, f.payload)
+  assert.equal(result.history, 'failed')
+  assert.equal((await readWorkspaceSnapshot(f.root)).revision, result.revision)
+  assert.deepEqual(await f.service.commit(f.owner, f.payload), result)
+  const other = JSON.parse(f.payload.changes[0].json)
+  const selected = other.presets.find(preset => preset.id !== f.payload.selectedPresetId)
+  assert.ok(selected)
+  await assert.rejects(f.service.commit(f.owner, { ...f.payload, selectedPresetId: selected.id }), code('OPERATION_ID_REUSED'))
+})
+
+test('외부 변경 충돌은 파일·개인 이력을 갱신하지 않는다', async t => {
+  const f = await saveFixture(t)
+  const target = path.join(f.root.canonicalPath, 'apis', `${f.api.id}.json`)
+  const external = { ...JSON.parse(await readFile(target, 'utf8')), url: '/external-edit' }
+  await writeFile(target, JSON.stringify(external))
+  await assert.rejects(f.service.commit(f.owner, f.payload), code('FILE_CONFLICT'))
+  assert.equal(await readFile(target, 'utf8'), JSON.stringify(external))
+  assert.equal((await f.database.personal.history({ scope: { localFolderId: f.opened.connection.localFolderId, workspaceId: f.opened.connection.workspaceId }, apiId: f.api.id })).items.length, 0)
+})
+
+test('Main 종료 대기는 진행 중 파일 교체·개인 이력 처리가 끝날 때까지 기다린다', async t => {
+  const f = await saveFixture(t), rename = fs.rename
+  let entered, resume
+  const reached = new Promise(resolve => { entered = resolve }), paused = new Promise(resolve => { resume = resolve })
+  t.mock.method(fs, 'rename', async (from, to) => {
+    if (to === path.join(f.root.canonicalPath, 'apis', `${f.api.id}.json`)) { entered(); await paused }
+    return rename(from, to)
+  })
+  const saving = f.service.commit(f.owner, f.payload)
+  await reached
+  let drained = false
+  const waiting = f.service.drain().then(() => { drained = true })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(drained, false)
+  f.service.releaseOwner(f.owner.windowId)
+  resume()
+  assert.equal((await saving).history, 'recorded')
+  await waiting
+  assert.equal(drained, true)
+  await assert.rejects(f.service.commitStatus(f.owner, { handle: f.payload.handle, operationId: f.payload.operationId }), code('WORKSPACE_NOT_OPEN'))
+})

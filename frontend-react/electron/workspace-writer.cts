@@ -18,8 +18,9 @@ function safeError(error: unknown): WorkspaceError {
 }
 function validateRequest(input: unknown): FileCommit {
   try {
-    const data = object(input, ['operationId', 'expectedRevision', 'changes'])
+    const data = object(input, ['operationId', 'expectedRevision', 'changes', 'selectedPresetId'], ['operationId', 'expectedRevision', 'changes'])
     uuid(data.operationId)
+    if (data.selectedPresetId !== undefined) { uuid(data.selectedPresetId) }
     if (!isHash(data.expectedRevision) || !Array.isArray(data.changes) || !data.changes.length || data.changes.length > WORKSPACE_LIMITS.files) { throw new WorkspaceError('INVALID_REQUEST') }
     const paths = new Set<string>()
     let bytes = 0
@@ -45,7 +46,7 @@ function validateRequest(input: unknown): FileCommit {
       if (Buffer.byteLength(json) > WORKSPACE_LIMITS.fileBytes) { throw new WorkspaceError('PAYLOAD_TOO_LARGE') }
       return { action: 'put' as const, kind, id: change.id, expectedHash: change.expectedHash, json }
     }).sort((a, b) => { const left = relativeDocument(a.kind, a.id), right = relativeDocument(b.kind, b.id); return left < right ? -1 : left > right ? 1 : 0 })
-    return { operationId: data.operationId, expectedRevision: data.expectedRevision, changes }
+    return { operationId: data.operationId, expectedRevision: data.expectedRevision, changes, ...(data.selectedPresetId === undefined ? {} : { selectedPresetId: data.selectedPresetId as string }) }
   } catch (error) {
     if (error instanceof WorkspaceError) { throw error }
     throw new WorkspaceError('INVALID_REQUEST')

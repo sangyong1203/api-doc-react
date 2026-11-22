@@ -16,6 +16,8 @@ const folder = path.join(root, 'sample'), empty = path.join(root, 'new'), invali
 await Promise.all([mkdir(folder), mkdir(empty), mkdir(invalid)])
 const sample = JSON.parse(await readFile('../doc/storage-v1.samples.json', 'utf8')).valid.find(value => value.name === 'main').files
 for (const [relative, data] of Object.entries(sample)) { const file = path.join(folder, relative); await mkdir(path.dirname(file), { recursive: true }); await writeFile(file, JSON.stringify(data)) }
+const apiId = sample['workspace.json'].collections.flatMap(collection => [...collection.apiIds, ...collection.folders.flatMap(folder => folder.apiIds)])[0]
+const apiFile = path.join(folder, 'apis', `${apiId}.json`)
 const manifestBefore = await readFile(path.join(folder, 'workspace.json'), 'utf8')
 await writeFile(path.join(invalid, 'workspace.json'), '{invalid json')
 let patched = false
@@ -23,7 +25,8 @@ const visible = '.workspace-session:not([hidden])'
 async function wait(expression) {
   for (let attempt = 0; attempt < 150; attempt++) { if (await renderer.evaluate(expression)) { return }
     await delay(100) }
-  throw new Error(`UI condition timeout: ${expression}`)
+  const message = await renderer.evaluate(`document.querySelector(${JSON.stringify(`${visible} .request-validation-error`)})?.textContent ?? ''`)
+  throw new Error(`UI condition timeout: ${expression}; message: ${message}`)
 }
 async function click(selector) {
   const point = await renderer.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`)
@@ -67,6 +70,47 @@ try {
   await click(`${visible} .workspace-name`)
   await click('.workspace-option:last-child')
   assert.equal(await renderer.evaluate(`document.querySelector(${JSON.stringify(`${visible} .url-input`)}).value`), '/unsaved-folder-edit')
+  await input(`${visible} input[aria-label="Query params 1행 값"]`, '[7, 8]')
+  // 기존 저장 버튼으로 실제 파일에 쓰고 선택하지 않은 세트·환경·manifest는 보존합니다.
+  await click(`${visible} .request-save`)
+  await wait(`document.querySelector(${JSON.stringify(`${visible} .request-validation-error`)})?.textContent==='저장했습니다.'`)
+  const saved = JSON.parse(await readFile(apiFile, 'utf8'))
+  assert.equal(saved.url, '/unsaved-folder-edit')
+  assert.equal(saved.presets.find(preset => preset.id === saved.defaultPresetId).values.query[saved.request.query[0].id].value, '[7, 8]')
+  const originalApi = sample[`apis/${apiId}.json`]
+  assert.deepEqual(saved.presets.filter(preset => preset.id !== saved.defaultPresetId), originalApi.presets.filter(preset => preset.id !== originalApi.defaultPresetId))
+  assert.equal(await renderer.evaluate(`document.querySelector(${JSON.stringify(`${visible} .request-save`)})?.disabled`), true)
+  // 쓰기 중 추가 편집은 완료 후에도 미저장으로 남아야 합니다.
+  await input(`${visible} .url-input`, '/saved-copy')
+  await main.evaluate(`workspaceSmoke.rename=process.mainModule.require('node:fs/promises').rename;workspaceSmoke.paused=false;workspaceSmoke.resume=null;process.mainModule.require('node:fs/promises').rename=async(from,to)=>{if(to.endsWith(${JSON.stringify(`${apiId}.json`)})){workspaceSmoke.paused=true;await new Promise(resolve=>workspaceSmoke.resume=resolve)}return workspaceSmoke.rename(from,to)};true`)
+  await click(`${visible} .request-save`)
+  for (let attempt = 0; attempt < 100; attempt++) { if (await main.evaluate('workspaceSmoke.paused')) { break }; await delay(50) }
+  assert.equal(await main.evaluate('workspaceSmoke.paused'), true)
+  await input(`${visible} .url-input`, '/edited-during-save')
+  await main.evaluate('workspaceSmoke.resume();true')
+  await wait(`document.querySelector(${JSON.stringify(`${visible} .request-save`)})?.textContent==='저장'`)
+  await main.evaluate("process.mainModule.require('node:fs/promises').rename=workspaceSmoke.rename;delete workspaceSmoke.rename;true")
+  assert.equal(JSON.parse(await readFile(apiFile, 'utf8')).url, '/saved-copy')
+  assert.equal(await renderer.evaluate(`document.querySelector(${JSON.stringify(`${visible} .url-input`)}).value`), '/edited-during-save')
+  assert.equal(await renderer.evaluate(`document.querySelector(${JSON.stringify(`${visible} .request-save`)})?.disabled`), false)
+  await click(`${visible} .request-save`)
+  await wait(`document.querySelector(${JSON.stringify(`${visible} .request-save`)})?.disabled===true`)
+  const beforeConflict = await readFile(apiFile, 'utf8')
+  await writeFile(apiFile, JSON.stringify({ ...JSON.parse(beforeConflict), url: '/external-editor' }))
+  await input(`${visible} .url-input`, '/keep-unsaved-after-conflict')
+  await click(`${visible} .request-save`)
+  await wait(`document.querySelector(${JSON.stringify(`${visible} .request-validation-error`)})?.textContent.includes('기준 내용')`)
+  assert.equal(JSON.parse(await readFile(apiFile, 'utf8')).url, '/external-editor')
+  assert.equal(await renderer.evaluate(`document.querySelector(${JSON.stringify(`${visible} .url-input`)}).value`), '/keep-unsaved-after-conflict')
+  assert.equal(await renderer.evaluate(`document.querySelector(${JSON.stringify(`${visible} .request-save`)})?.disabled`), false)
+  // 외부 편집기가 원래 내용으로 복귀한 상황을 만들고, 재열기 시 마지막 저장값을 확인합니다.
+  await writeFile(apiFile, beforeConflict)
+  for (const [relative, data] of Object.entries(sample)) {
+    if (relative === `apis/${apiId}.json`) { continue }
+    assert.equal(await readFile(path.join(folder, relative), 'utf8'), JSON.stringify(data))
+  }
+  const saveCapture = await renderer.send('Page.captureScreenshot', { format: 'png' })
+  await writeFile('out/workspace-save-smoke.png', Buffer.from(saveCapture.data, 'base64'))
   await main.evaluate(`workspaceSmoke.choices.push(${JSON.stringify(empty)});true`)
   await click(`${visible} .workspace-name`)
   await click('.workspace-create-action')
@@ -90,9 +134,13 @@ try {
   await wait(`Boolean(window.apidocDesktop?.workspace && document.querySelector(${JSON.stringify(`${visible} .url-input`)}))`)
   const stale = await renderer.evaluate(`window.apidocDesktop.workspace.snapshot({requestId:${JSON.stringify(randomUUID())},payload:{handle:${JSON.stringify(oldHandle)}}})`)
   assert.equal(stale.ok, false); assert.equal(stale.error.code, 'WORKSPACE_NOT_OPEN')
-  console.log(JSON.stringify({ result: 'passed', fixture: root, checked: ['open', 'create', 'snapshot IPC', 'cancel/failure preservation', 'session draft preservation', 'file save/run disabled', 'reload invalidates handle'], screenshot: 'out/workspace-smoke.png' }))
+  await openFolder(folder)
+  await wait(`document.querySelector(${JSON.stringify(`${visible} .url-input`)})?.value==='/edited-during-save'`)
+  assert.equal(await renderer.evaluate(`document.querySelector(${JSON.stringify(`${visible} .request-save`)})?.disabled`), true)
+  assert.equal(await renderer.evaluate(`document.querySelector(${JSON.stringify(`${visible} input[aria-label="Query params 1행 값"]`)}).value`), '[7, 8]')
+  console.log(JSON.stringify({ result: 'passed', fixture: root, checked: ['open', 'create', 'snapshot IPC', 'cancel/failure preservation', 'session draft preservation', 'save and reopen', 'edits during save preserved', 'external conflict preserves edit', 'other presets/files preserved', 'actual run disabled', 'reload invalidates handle'], screenshot: 'out/workspace-smoke.png' }))
 } finally {
-  if (patched) { try { await main.evaluate(`process.mainModule.require('electron').dialog.showOpenDialog=workspaceSmoke.original;true`) } catch { /* 앱이 종료된 경우 복원할 대상이 없습니다. */ } }
-  try { await main.evaluate(`setImmediate(()=>process.mainModule.require('electron').app.quit());true`) } catch { /* 이미 종료된 경우입니다. */ }
+  if (patched) { try { await main.evaluate(`process.mainModule.require('electron').dialog.showOpenDialog=workspaceSmoke.original;if(workspaceSmoke.rename){process.mainModule.require('node:fs/promises').rename=workspaceSmoke.rename;workspaceSmoke.resume?.()}true`) } catch { /* 앱이 종료된 경우 복원할 대상이 없습니다. */ } }
+  try { await main.evaluate(`process.mainModule.require('electron').dialog.showMessageBox=async()=>({response:1,checkboxChecked:false});setImmediate(()=>process.mainModule.require('electron').app.quit());true`) } catch { /* 이미 종료된 경우입니다. */ }
   renderer.close(); main.close()
 }

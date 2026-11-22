@@ -1,20 +1,24 @@
 import { randomUUID } from 'node:crypto'
-import type { DesktopDataApi, DesktopResult, WorkspaceConnection, WorkspaceSelection } from '../src/types/desktopData.js'
+import type { CommitStatus, CommittedWorkspace, DesktopDataApi, DesktopResult, WorkspaceCommit, WorkspaceConnection, WorkspaceSelection } from '../src/types/desktopData.js'
 import type { PersonalDatabase } from './personal-database.cjs'
 import { object, text, uuid } from './personal-data-validation.cjs'
 import { createWorkspaceFiles, readWorkspaceSnapshot, selectWorkspaceRoot } from './workspace-files.cjs'
 import type { WorkspaceRoot } from './workspace-files.cjs'
-import { WorkspaceError } from './workspace-format.cjs'
+import { validateApiEdit, WorkspaceError } from './workspace-format.cjs'
+import { WorkspaceWriter } from './workspace-writer.cjs'
+import { isHash } from './workspace-write-journal.cjs'
 
 export type WorkspaceOwner = { windowId: number; frame: object }
 type Connection = { owner: WorkspaceOwner; root: WorkspaceRoot; connection: WorkspaceConnection }
-export type WorkspaceBridge = Pick<DesktopDataApi['workspace'], 'open' | 'create' | 'snapshot' | 'release'>
+export type WorkspaceBridge = Pick<DesktopDataApi['workspace'], 'open' | 'create' | 'snapshot' | 'release' | 'commit' | 'commitStatus'>
 
 /** Main만 네이티브 선택 경로를 공급합니다. Renderer 요청에는 경로를 받지 않습니다. */
 export class WorkspaceService {
   private readonly connections = new Map<string, Connection>()
   private readonly selecting = new Set<number>()
-  constructor(private readonly database: PersonalDatabase, private readonly selectFolder: (owner: WorkspaceOwner) => Promise<string | null>, private readonly isCurrent: (owner: WorkspaceOwner) => boolean) {}
+  private readonly writes = new Set<Promise<unknown>>()
+  private readonly results = new Map<string, CommittedWorkspace>()
+  constructor(private readonly database: PersonalDatabase, private readonly selectFolder: (owner: WorkspaceOwner) => Promise<string | null>, private readonly isCurrent: (owner: WorkspaceOwner) => boolean, private readonly writer?: WorkspaceWriter) {}
   releaseOwner(windowId: number): void {
     for (const [handle, item] of this.connections) { if (item.owner.windowId === windowId) { this.connections.delete(handle) } }
   }
@@ -74,6 +78,58 @@ export class WorkspaceService {
     this.assertOwner(owner)
     if (snapshot.workspace.id !== item.connection.workspaceId) { throw new WorkspaceError('WORKSPACE_NOT_OPEN') }
     return snapshot
+  }
+  /** 종료 승인이 난 뒤 새 IPC를 막고, 파일 쓰기와 뒤따르는 개인 이력 처리가 끝날 때까지 기다립니다. */
+  async drain(): Promise<void> { await Promise.allSettled([...this.writes]) }
+  commit(owner: WorkspaceOwner, input: unknown): Promise<CommittedWorkspace> {
+    const task = this.saveApi(owner, input)
+    this.writes.add(task)
+    void task.finally(() => this.writes.delete(task)).catch(() => {})
+    return task
+  }
+  async commitStatus(owner: WorkspaceOwner, input: unknown): Promise<CommitStatus> {
+    const data = object(input, ['handle', 'operationId']); uuid(data.operationId)
+    const item = this.connection(owner, data.handle)
+    if (!this.writer) { throw new WorkspaceError('INTERNAL_ERROR') }
+    const status = await this.writer.status({ root: item.root, ...item.connection }, data.operationId)
+    if (status.status !== 'committed') { return status }
+    return { status: 'committed', result: this.results.get(`${item.connection.localFolderId}:${data.operationId}`) ?? { ...status.result, history: 'unknown' } }
+  }
+  private async saveApi(owner: WorkspaceOwner, input: unknown): Promise<CommittedWorkspace> {
+    const data = object(input, ['handle', 'operationId', 'expectedRevision', 'selectedPresetId', 'changes'])
+    uuid(data.operationId); uuid(data.selectedPresetId)
+    const item = this.connection(owner, data.handle)
+    if (!this.writer || !isHash(data.expectedRevision) || !Array.isArray(data.changes) || data.changes.length !== 1) { throw new WorkspaceError('INVALID_REQUEST') }
+    const change = object(data.changes[0], ['action', 'kind', 'id', 'expectedHash', 'json'])
+    uuid(change.id); text(change.json)
+    if (change.action !== 'put' || change.kind !== 'api' || !isHash(change.expectedHash) || Buffer.byteLength(change.json) > 8 * 1024 * 1024) { throw new WorkspaceError('INVALID_REQUEST') }
+    const request = { operationId: data.operationId, expectedRevision: data.expectedRevision, selectedPresetId: data.selectedPresetId,
+      changes: [{ action: 'put', kind: 'api', id: change.id, expectedHash: change.expectedHash, json: change.json }] } satisfies Omit<WorkspaceCommit, 'handle'>
+    const scope = { root: item.root, localFolderId: item.connection.localFolderId, workspaceId: item.connection.workspaceId }
+    const key = `${scope.localFolderId}:${data.operationId}`
+    const prior = await this.writer.status(scope, data.operationId)
+    if (prior.status === 'committed') {
+      // 상태를 먼저 조회해도 같은 작업 ID의 다른 내용은 파일 계층에서 거부합니다.
+      const result = await this.writer.commit(scope, request)
+      return this.results.get(key) ?? { ...result, history: 'unknown' }
+    }
+    if (prior.status === 'pending') { throw new WorkspaceError('WORKSPACE_RECOVERY_REQUIRED') }
+    const snapshot = await readWorkspaceSnapshot(item.root)
+    this.assertOwner(owner)
+    if (snapshot.workspace.id !== scope.workspaceId) { throw new WorkspaceError('WORKSPACE_NOT_OPEN') }
+    if (snapshot.revision !== data.expectedRevision || snapshot.apis.find(document => document.id === change.id)?.hash !== change.expectedHash) { throw new WorkspaceError('FILE_CONFLICT') }
+    const api = validateApiEdit(snapshot, change.json, change.id, data.selectedPresetId)
+    const result = await this.writer.commit(scope, request)
+    let history: CommittedWorkspace['history'] = 'recorded'
+    try {
+      const selected = api.presets.find(preset => preset.id === data.selectedPresetId)!
+      await this.database.personal.recordHistory({ scope: { localFolderId: scope.localFolderId, workspaceId: scope.workspaceId }, apiId: api.id, operationId: data.operationId,
+        json: JSON.stringify({ payloadVersion: 1, common: { method: api.method, url: api.url, request: api.request, response: api.response, documentation: api.documentation }, selectedPreset: { id: selected.id, name: selected.name, values: selected.values } }) })
+    } catch { history = 'failed' }
+    const committed = { ...result, history }
+    this.results.set(key, committed)
+    if (this.results.size > 1000) { this.results.delete(this.results.keys().next().value!) }
+    return committed
   }
   release(owner: WorkspaceOwner, input: unknown): null {
     const data = object(input, ['handle'])

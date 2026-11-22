@@ -2,12 +2,13 @@
 
 작성일: 2026-11-12
 
-최종 수정일: 2026-11-20
+최종 수정일: 2026-11-22
 
 ## 1. 목적과 확정 방향
 
 개발자가 REST API를 등록·호출·문서화·테스트하고, 여러 요청 데이터 세트를 재사용하며, API 자료를 Git으로 공유하는 도구를 개발한다. `frontend-vue`는 기능 이해를 위한 참고 자료로 활용하며, React 버전은 `frontend-react`에서 개발한다. UI·사용 흐름·폴더 구조·구현 방식은 최신 개발 기획과 React 환경에 맞게 설계한다.
 
+- 기능 연결은 기존에 구현한 UI의 사용 흐름을 우선한다. 새 화면이나 별도 관리 UI가 필요하면 사용자와 상의한 뒤 진행한다.
 - 프런트엔드는 React + TypeScript + Vite로 개발하고, UI는 shadcn/ui를 사용한다.
 - UI 추가 라이브러리는 Tailwind CSS(스타일), Lucide React(아이콘), React Router(라우팅), CodeMirror(JSON·text·문서 원문 편집)를 사용한다. UI 상태는 React 기본 상태로 시작한다. 패키지 버전은 개발 환경 구성 시 상호 호환성을 확인하고 `package.json`과 lockfile에 기록한다.
 - Electron 기반 PC 앱으로 제공한다. 사용자는 설치 후 아이콘으로 독립 창을 실행하고 작업 폴더를 선택한다. React UI와 파일·API 실행 기능을 한 앱으로 배포·업데이트한다.

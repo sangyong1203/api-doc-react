@@ -13,7 +13,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { CollectionSidebar } from '@/features/collections/components/CollectionSidebar'
 import { CollectionEditDialog } from '@/features/collections/components/CollectionEditDialog'
 import type { CollectionDeleteTarget, CollectionDialogTarget, CollectionFormValues } from '@/features/collections/types'
-import { getRequestBody, createRequestUrl, serializeQuery, validateRequest, withDefaultBodyView } from '@/features/api-editor/requestSchema'
+import { getRequestBody, createRequestUrl, importBody, serializeQuery, validateRequest, withDefaultBodyView } from '@/features/api-editor/requestSchema'
 import { RequestEditor } from '@/features/api-editor/components/RequestEditor'
 import { RequestToolbar } from '@/features/api-editor/components/RequestToolbar'
 import { PayloadPicker } from '@/features/payload-presets/components/PayloadPicker'
@@ -25,7 +25,8 @@ import { EnvironmentPicker } from '@/features/environments/components/Environmen
 import { createSampleResponse, SAMPLE_COLLECTIONS, SAMPLE_FOLDERS, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
 import type { RequestField, SampleRequest, Workspace, WorkspaceTab } from '@/features/workspace/types'
 import '@/styles/workspace.css'
-import { decodeFolderWorkspace } from '@/features/workspace/storageModel'
+import { decodeFolderWorkspace, encodeApiEdit } from '@/features/workspace/storageModel'
+import type { CommittedWorkspace, WorkspaceCommit, WorkspaceSnapshot } from '@/types/desktopData'
 import type { FolderWorkspace } from '@/features/workspace/storageModel'
 import type { CreateWorkspaceResult } from '@/features/workspace/types'
 import { Badge } from '@/components/ui/badge'
@@ -115,7 +116,7 @@ export function WorkspacePage() {
       {workspaces.map((workspace) => (
         // 편집 화면을 유지해 미저장 초안·파일 선택·열린 탭과 기능별 로컬 상태를 보존합니다.
         <div className="workspace-session" key={workspace.id} hidden={workspace.id !== selectedId}>
-          <WorkspaceSession workspace={workspace} workspaces={workspaces} onSelect={setSelectedId} onCreate={createWorkspace} onOpen={() => { void openWorkspace() }} native={native} busy={busy} folderError={folderError} />
+          <WorkspaceSession workspace={workspace} workspaces={workspaces} onSelect={setSelectedId} onCreate={createWorkspace} onOpen={() => { void openWorkspace() }} native={native} busy={busy} folderError={folderError} onSnapshot={(snapshot) => setWorkspaces(current => current.map(item => item.id === workspace.id && item.loaded ? { ...item, loaded: { ...item.loaded, snapshot } } : item))} />
         </div>
       ))}
     </div>
@@ -131,9 +132,10 @@ type WorkspaceSessionProps = {
   native: boolean
   busy: boolean
   folderError: string | null
+  onSnapshot: (snapshot: WorkspaceSnapshot) => void
 }
 
-function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, native, busy, folderError }: WorkspaceSessionProps) {
+function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, native, busy, folderError, onSnapshot }: WorkspaceSessionProps) {
   const loaded = workspace.loaded
   const initialRequests = loaded?.requests ?? (workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_REQUESTS : [])
   const [documentOpen, setDocumentOpen] = useState(false)
@@ -144,7 +146,13 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, n
   const [requests, setRequests] = useState(initialRequests)
   const [presetsByApi, setPresetsByApi] = useState<Record<string, PayloadPreset[]>>(() => loaded?.presetsByApi ?? Object.fromEntries(initialRequests.map((request) => [request.id, [createInitialPreset(request)]])))
   const [defaultPresets, setDefaultPresets] = useState<Record<string, string | null>>(loaded?.defaultPresets ?? {})
-  const [requestError, setRequestError] = useState<{ id: string; message: string } | null>(null)
+  const [requestError, setRequestError] = useState<{ id: string; message: string; kind?: 'success' } | null>(null)
+  const snapshotRef = useRef(loaded?.snapshot)
+  const folderSave = useRef<{ payload: WorkspaceCommit; request: SampleRequest; presetId: string } | null>(null)
+  const saveBusy = useRef(false)
+  const [saving, setSaving] = useState(false)
+  const [pendingSaveId, setPendingSaveId] = useState<string | null>(null)
+  const [saveUnconfirmed, setSaveUnconfirmed] = useState(false)
   const [confirmation, setConfirmation] = useState<{
     title: string
     description: ReactNode
@@ -167,7 +175,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, n
   const runningDeleteCount = affectedTabs.filter((tab) => tab.execution.status === 'running').length
   useAppCloseProtection(
     tabs.some((tab) => JSON.stringify(tab.request) !== JSON.stringify(tab.saved)),
-    tabs.some((tab) => tab.execution.status === 'running'),
+    saving || tabs.some((tab) => tab.execution.status === 'running'),
   )
 
   useEffect(() => {
@@ -261,6 +269,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, n
   }
 
   function closeTab(id: string, confirmed = false) {
+    if (folderSave.current?.request.id === id) { setRequestError({ id, message: '저장 작업의 상태를 먼저 확인해 주세요.' }); return }
     const target = tabs.find((tab) => tab.request.id === id)
     if (!target) {
       return
@@ -283,6 +292,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, n
   }
 
   function selectPreset(id: string | null, confirmed = false) {
+    if (folderSave.current?.request.id === activeId) { return }
     if (!activeTab || id === activeTab.selectedPresetId) { return }
     const base = requests.find((request) => request.id === activeTab.request.id)
     const preset = (presetsByApi[activeTab.request.id] ?? []).find((item) => item.id === id)
@@ -370,8 +380,76 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, n
     updateTab(activeId, (tab) => ({ ...tab, execution: { status: 'cancelled' } }))
   }
 
+  async function finishFolderSave(result: CommittedWorkspace) {
+    const pending = folderSave.current, desktop = window.apidocDesktop?.workspace
+    if (!pending || !desktop || !loaded) { return }
+    const response = await desktop.snapshot({ requestId: crypto.randomUUID(), payload: { handle: loaded.connection.handle } })
+    if (!response.ok || response.data.revision !== result.revision) {
+      setRequestError({ id: pending.request.id, message: '파일은 저장됐지만 현재 파일 상태가 달라졌거나 확인되지 않았습니다. 화면의 편집은 유지했습니다. 폴더 파일을 확인해 주세요.' })
+      folderSave.current = null; setPendingSaveId(null); setSaveUnconfirmed(false)
+      return
+    }
+    snapshotRef.current = response.data; onSnapshot(response.data)
+    const submitted = pending.request, selectedId = pending.presetId
+    // 저장 중 추가한 편집은 request에 남기고, 실제로 보낸 복사본까지만 saved로 갱신합니다.
+    updateTab(submitted.id, tab => ({ ...tab, saved: submitted }))
+    setPresetsByApi(current => ({ ...current, [submitted.id]: (current[submitted.id] ?? []).map(preset => preset.id === selectedId ? { ...preset, values: copyPayload(submitted) } : preset) }))
+    setRequests(current => current.map(request => request.id === submitted.id ? applyPayload(submitted, copyPayload(request)) : request))
+    setRequestError({ id: submitted.id, kind: 'success', message: result.history === 'recorded' ? '저장했습니다.' : '파일은 저장했습니다. 개인 저장 이력은 확인하지 못했습니다.' })
+    folderSave.current = null; setPendingSaveId(null); setSaveUnconfirmed(false)
+  }
+
+  async function saveFolderRequest() {
+    const desktop = window.apidocDesktop?.workspace, snapshot = snapshotRef.current
+    if (!loaded || !activeTab || !desktop || !snapshot || saveBusy.current) { return }
+    const pending = folderSave.current
+    if (!pending) {
+      const presetId = activeTab.selectedPresetId
+      if (!presetId) { return }
+      try {
+        let submitted = activeTab.request
+        // 원문은 공유 파일에 그대로 넣지 않고 기존 편집기의 구조 변환을 거쳐 검증합니다.
+        if (submitted.bodyView === 'json') {
+          const original = JSON.parse(snapshot.apis.find(document => document.id === submitted.id)!.json)
+          const values = original.presets.find((preset: { id: string }) => preset.id === presetId)?.values.body.fields ?? {}
+          if (Object.values(values).some(value => typeof value === 'object')) { throw new Error('비밀 참조가 있는 JSON 본문은 필드 보기에서 저장해 주세요.') }
+          const imported = submitted.body.trim() ? importBody(submitted.body, submitted.schema?.body ?? []) : { fields: [], values: {} }
+          submitted = { ...submitted, schema: { fields: submitted.schema?.fields ?? {}, body: imported.fields }, bodyValues: imported.values }
+        }
+        const api = encodeApiEdit(snapshot, submitted, presetId)
+        folderSave.current = { request: submitted, presetId, payload: { handle: loaded.connection.handle, operationId: crypto.randomUUID(), expectedRevision: snapshot.revision, selectedPresetId: presetId,
+          changes: [{ action: 'put', kind: 'api', id: api.id, expectedHash: snapshot.apis.find(document => document.id === api.id)!.hash, json: JSON.stringify(api) }] } }
+        setPendingSaveId(submitted.id)
+        updateTab(submitted.id, tab => ({ ...tab, request: submitted }))
+      } catch (error) { setRequestError({ id: activeTab.request.id, message: error instanceof Error ? error.message : '저장할 내용을 확인하세요.' }); return }
+    }
+    saveBusy.current = true; setSaving(true)
+    try {
+      const current = folderSave.current!
+      if (pending) {
+        const response = await desktop.commitStatus({ requestId: crypto.randomUUID(), payload: { handle: current.payload.handle, operationId: current.payload.operationId } })
+        if (response.ok && response.data.status === 'committed') { await finishFolderSave(response.data.result); return }
+        if (response.ok && response.data.status === 'failed') {
+          folderSave.current = null; setPendingSaveId(null); setSaveUnconfirmed(false)
+          setRequestError({ id: current.request.id, message: response.data.error.message }); return
+        }
+        setRequestError({ id: current.request.id, message: '저장 결과를 아직 확정할 수 없습니다. 편집은 유지하며 자동으로 다시 저장하지 않습니다.' })
+      } else {
+        const response = await desktop.commit({ requestId: crypto.randomUUID(), payload: current.payload })
+        if (response.ok) { await finishFolderSave(response.data); return }
+        if (!['IPC_TIMEOUT', 'IPC_UNAVAILABLE', 'WORKSPACE_RECOVERY_REQUIRED'].includes(response.error.code)) { folderSave.current = null; setPendingSaveId(null); setSaveUnconfirmed(false) }
+        setRequestError({ id: current.request.id, message: response.error.message })
+      }
+      if (folderSave.current) { setSaveUnconfirmed(true) }
+    } catch {
+      setSaveUnconfirmed(true)
+      setRequestError({ id: activeTab.request.id, message: '저장 응답을 확인하지 못했습니다. 저장 버튼으로 상태를 확인해 주세요. 편집은 유지했습니다.' })
+    } finally { saveBusy.current = false; setSaving(false) }
+  }
+
   function saveRequest() {
-    if (!activeTab || loaded) { return }
+    if (loaded) { void saveFolderRequest(); return }
+    if (!activeTab) { return }
     const error = validateRequest(activeTab.request)
     if (error) { setRequestError({ id: activeTab.request.id, message: error }); return }
     const entry: ApiSaveHistory = {
@@ -415,7 +493,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, n
       </header>
       <Separator />
       {folderError && <p className="workspace-folder-error px-4 py-2 text-sm text-error" role="alert">{folderError}</p>}
-      {loaded && <p className="workspace-storage-notice px-4 py-2 text-xs text-muted-foreground" role="status">폴더의 파일을 불러왔습니다. 편집은 현재 화면에만 유지하며 파일 저장·실제 호출은 아직 연결하지 않았습니다.{loaded.hasSecretRefs ? ' 비밀 참조는 미입력으로 표시하며 실제값을 복원하지 않았습니다.' : ''}</p>}
+      {loaded && <p className="workspace-storage-notice px-4 py-2 text-xs text-muted-foreground" role="status">저장 버튼으로 현재 API의 명세와 선택한 입력 세트를 공유 파일에 저장합니다. 일반 입력에는 공유 가능한 값을 사용해 주세요. 비밀 실제값·선택 파일은 저장하지 않으며 실제 호출은 아직 지원하지 않습니다.{loaded.hasSecretRefs ? ' 비밀 참조는 미입력으로 표시하며 실제값을 복원하지 않았습니다.' : ''}</p>}
       <div className="workspace-body">
         <CollectionSidebar readOnly={Boolean(loaded)} collections={collections} folders={folders} requests={requests} selectedId={activeId ?? undefined} onSelect={openRequest} onEdit={beginEdit} onDelete={setDeleteTarget} />
         <Separator orientation="vertical" className="workspace-sidebar-divider" />
@@ -428,6 +506,9 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, n
             <TabsContent className="workspace-content" key={activeTab.request.id} value={activeTab.request.id}>
               <RequestToolbar
                 fileWorkspace={Boolean(loaded)}
+                saving={saving}
+                savePending={saveUnconfirmed && pendingSaveId === activeTab.request.id}
+                saveBlocked={Boolean(pendingSaveId && pendingSaveId !== activeTab.request.id)}
                 request={activeTab.request}
                 collectionName={collections.find((item) => item.id === activeTab.request.collectionId)?.name ?? ''}
                 folderName={folders.find((item) => item.id === activeTab.request.folderId)?.name}
@@ -440,7 +521,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, n
                 onRun={runSample}
                 onCancel={cancelSample}
               />
-              {requestError?.id === activeTab.request.id && <p className="request-validation-error px-6 pb-2 text-sm text-error" role="alert">{requestError.message}</p>}
+              {requestError?.id === activeTab.request.id && <p className={`request-validation-error px-6 pb-2 text-sm ${requestError.kind === 'success' ? 'text-muted-foreground' : 'text-error'}`} role={requestError.kind === 'success' ? 'status' : 'alert'}>{requestError.message}</p>}
               <div className="request-response-layout">
                 <RequestEditor
                   documentationEditor={<ApiDocumentationEditor request={activeTab.request}

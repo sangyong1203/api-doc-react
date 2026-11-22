@@ -15,9 +15,9 @@
 
 상태: **진행 중**
 
-- 현재: [IPC 계약](../ipc-contract.md)과 데이터 API 타입 정의. 실제 Preload는 종료 확인·버전 조회와 작업 폴더 열기·생성·snapshot·release를 제공. 요청·응답 런타임 검증과 고정 채널 적용.
+- 현재: [IPC 계약](../ipc-contract.md)과 데이터 API 타입 정의. 실제 Preload는 종료 확인·버전 조회와 작업 폴더 열기·생성·snapshot·release와 기존 API 한 개의 commit/commitStatus를 제공. 요청·응답 런타임 검증과 고정 채널 적용.
 - 검증: IPC 보안 테스트 5건과 패키징 앱의 종료·격리·중복 실행 회귀 검증 통과.
-- 남은 작업: 파일 쓰기·개인 데이터 서비스의 런타임 검증·IPC 연결. HTTP·업로드 계약은 05에서 정의.
+- 남은 작업: 파일 CRUD·개인 데이터 조회/초안 서비스의 IPC 연결. HTTP·업로드 계약은 05에서 정의.
 
 ## 02.03 IPC 보안과 파일 접근 범위
 
@@ -31,8 +31,8 @@
 
 상태: **검증 대기**
 
-- 현재: 네이티브 선택 폴더에 빈 작업 공간 생성, v1 공유 파일 읽기·검증·목록 표시, 작업 공간 전환 구현. 취소·실패·이미 열린 폴더 재선택 시 미저장 편집 보존. 개인 DB에는 폴더 식별 정보만 기록하며 파일 편집 저장·실제 호출·비밀 실제값 복원은 비활성화.
-- 검증: [파일·서비스 테스트](../../frontend-react/electron/workspace.test.mjs)·[Preload 테스트](../../frontend-react/electron/workspace-preload.test.mjs)·[화면 변환 테스트](../../frontend-react/src/features/workspace/storageModel.test.mjs) 70건 통과. 기존 저장 포맷 사례 55건, 실제 파일 생성·읽기·링크/경합 거부, handle 소유 관계·최근 경로 검증 포함.
+- 현재: 네이티브 선택 폴더에 빈 작업 공간 생성, v1 공유 파일 읽기·검증·목록 표시, 작업 공간 전환 구현. 취소·실패·이미 열린 폴더 재선택 시 미저장 편집 보존. 폴더 식별 정보와 API 저장 이력을 개인 DB에 기록하며 기존 API의 명세·선택 세트 편집은 저장 버튼에 연결. 실제 호출·비밀 실제값 복원은 비활성화.
+- 검증: [파일·서비스 테스트](../../frontend-react/electron/workspace.test.mjs)·[Preload 테스트](../../frontend-react/electron/workspace-preload.test.mjs)·[화면 변환 테스트](../../frontend-react/src/features/workspace/storageModel.test.mjs) 80건 통과. 기존 저장 포맷 사례 55건, 실제 파일 생성·읽기·링크/경합 거부, handle 소유 관계·최근 경로 검증 포함.
 - 검증: macOS arm64 개발/ASAR 앱에서 실제 파일·SQLite·IPC를 사용한 [화면 검증](../../frontend-react/electron/workspace-smoke.mjs) 통과. 생성·열기·전환, 취소/잘못된 파일의 편집 보존, 재로드 후 handle 거부 확인. 네이티브 선택창의 반환값만 임시 경로로 대체했으며 직접 선택 검증은 포함하지 않음. 타입 검사·린트·빌드·Mac 로컬 패키징 통과.
 - 남은 작업: 사용자 직접 네이티브 폴더 선택과 Windows 앱 검증. macOS 설치·배포 검증은 11.07 보류 범위.
 
@@ -40,9 +40,10 @@
 
 상태: **진행 중**
 
-- 현재: [파일 저장 설계](../storage-design.md#51-파일-저장-계층과-복구-기록)에 따른 Main 전용 저장 계층 구현. 전체 revision·대상 해시·최종 문서 검증, 폴더별 직렬화, 임시 파일 교체/배타적 생성/삭제, 작업 ID 중복 방지·상태 조회, 원본/후보 저널과 명시적 완료/원복 제공. 개인 이력 결과와 분리하며 현재 앱 수명 주기·Preload·UI는 미연결.
-- 검증: [파일 저장·복구 테스트](../../frontend-react/electron/workspace-writer.test.mjs) 29건과 기존 폴더·IPC·개인 DB를 포함한 회귀 테스트 총 162건 통과. 실제 임시 파일의 저장·재열기·다중 파일 보상·중복 요청·충돌·상태 조회, 별도 프로세스 강제 종료 후 완료/원복 및 복구 중 재중단 확인. 권한·공간 부족·파일 점유는 모의 오류이며 Windows 실제 검증과 하드웨어 전원 손실 검증은 포함하지 않음. 타입 검사·린트·빌드 통과. macOS 개발 Electron의 실제 Main에서도 임시 프로필로 파일 저장·revision 검증·저장 계층 재생성 후 상태 조회 확인.
-- 남은 작업: 앱의 미완료 저널 선확인·종료 대기와 IPC/복구 UI 연결, 저장 성공·실패·결과 불명확 안내. 선택 세트 문맥·비밀값 분리/안전한 DTO·개인 이력 연결 후 화면 저장 활성화. Windows 점유·junction·경합·설치본 검증.
+- 현재: [파일 저장 설계](../storage-design.md#51-파일-저장-계층과-복구-기록)에 따른 Main 전용 저장 계층 구현. 전체 revision·대상 해시·최종 문서 검증, 폴더별 직렬화, 임시 파일 교체/배타적 생성/삭제, 작업 ID 중복 방지·상태 조회, 원본/후보 저널과 명시적 완료/원복 제공. 기존 API 한 개의 공통 명세·선택 세트를 기존 저장 버튼·IPC에 연결하고 성공 뒤 Main에서 개인 이력을 기록. 정상 종료는 파일 작업·이력 처리를 기다림. 추가 편집·오류·충돌은 기존 화면에 보존하며 결과 불명확 시 같은 버튼으로 상태만 조회.
+- 검증: [파일 저장·복구 테스트](../../frontend-react/electron/workspace-writer.test.mjs) 29건에서 실제 파일 저장·재열기·보상·중복/충돌 검사, 별도 프로세스 강제 종료 후 완료/원복 및 복구 중 재중단 확인. 권한·공간 부족·파일 점유는 모의 오류이며 Windows 실제 검증·하드웨어 전원 손실 검증은 포함하지 않음.
+- 검증: 기존 폴더·IPC·SQLite와 저장 연결 회귀 테스트 총 172건, 타입 검사·린트·빌드 통과. macOS 개발/로컬 ASAR 화면에서 기존 버튼의 파일 저장·재열기, 저장 중 추가 편집 보존, 외부 충돌 시 파일/입력 보존 확인. 네이티브 폴더 선택 응답만 임시 경로로 대체하며 별도 저장·복구 화면은 추가하지 않음.
+- 남은 작업: 미완료 저널의 재실행 시 선확인·처리 방식과 파일 CRUD 연결. 새 화면은 사용자와 상의 후 진행. 비밀 실제값 입력·새 참조 생성/주입은 04.04 후속. 세트/필드별 오류 안내 보완과 Windows 점유·junction·경합·설치본 검증.
 
 ## 02.06 외부 파일 변경 감지
 
@@ -52,11 +53,11 @@
 
 상태: **진행 중**
 
-- 현재: [개인 저장소 설계안](../personal-storage-design.md)에 따른 DB Worker·v1 스키마·DTO/참조 검증·설정/초안 CAS·이력 조회/보관 구현. WAL 백업·해시/무결성 검증, 사전 백업을 거치는 순차 migration 기반, 원본·후보 보존 복구와 별도 복구 Worker 제공. 미완료 복구 표식은 정상 열기를 차단하고 명시적 원본 복귀만 허용. 배포 스키마는 v1. Main에서 첫 폴더 요청 시 DB를 열고 정상 종료 시 Worker를 닫으며 폴더 식별 정보 조회·등록을 연결. 편집값 자동 저장·화면 복원·개인 데이터 IPC/UI는 미연결.
+- 현재: [개인 저장소 설계안](../personal-storage-design.md)에 따른 DB Worker·v1 스키마·DTO/참조 검증·설정/초안 CAS·이력 조회/보관 구현. WAL 백업·해시/무결성 검증, 사전 백업을 거치는 순차 migration 기반, 원본·후보 보존 복구와 별도 복구 Worker 제공. 미완료 복구 표식은 정상 열기를 차단하고 명시적 원본 복귀만 허용. 배포 스키마는 v1. Main에서 첫 폴더 요청 시 DB를 열고 정상 종료 시 Worker를 닫으며 폴더 식별 정보 조회·등록을 연결. 기존 API 파일 저장 뒤 선택 세트의 개인 이력 기록은 연결. 편집값 자동 저장·화면 복원·개인 데이터 조회 IPC/UI는 미연결.
 - 검증: 2026-11-20 개발/Windows ASAR 앱에서 Electron 45.4.1·Node 24.22.3·SQLite 3.54.1 로드, 저장·조회·커밋·롤백·무결성·별도 앱 재실행 후 보존·읽기 전용 쓰기 거부 통과. 타입 검사·린트·빌드·패키징 통과. 명령은 [README](../../frontend-react/README.md#내장-sqlite-호환성-검증) 참조.
 - 검증: 2026-11-22 macOS arm64 개발 Electron에서도 같은 런타임 버전으로 `desktop:sqlite-test` 통과. 임시 프로필의 실제 Worker·SQLite에서 저장·조회·WAL·커밋·롤백·무결성·별도 앱 재실행 후 보존·읽기 전용 쓰기 거부 확인. 프로젝트 타입 검사 통과. macOS 패키징·설치본은 미검증.
 - 검증: [개인 DB 기반 테스트](../../frontend-react/electron/personal-database.test.mjs)·[개인 데이터 테스트](../../frontend-react/electron/personal-data.test.mjs)·[백업/복구 테스트](../../frontend-react/electron/personal-database-maintenance.test.mjs)·IPC 보안 테스트 통과. DTO/CAS·초안 128 MiB 경계·이력 중복/보관·백업 변조/공간 부족·순차 migration 롤백·복구 네 단계 및 COMMIT 전/후 강제 종료·원본 복귀 확인. 이력 512 MiB 정리는 메타데이터 계산 검사, Windows 파일 점유는 모의 오류 검사이며 migration 상위 버전은 테스트 fixture임. `frontend-react`에서 `npm run desktop:build` 후 `node --test electron/personal-database-maintenance.test.mjs electron/personal-data.test.mjs electron/personal-database.test.mjs electron/ipc-security.test.mjs`로 실행. macOS 실제 Main·Worker에서 저장/재열기·WAL 백업·원본 보존 복구·손상 DB 전용 Worker 복구 확인. 타입 검사·린트 통과. Mac ASAR에서는 폴더 정보 등록·조회와 정상 종료를 포함한 실제 Main·Worker 연결 확인. 현재 저장 서비스 전체의 Windows 실행·ASAR 검증은 남아 있음.
-- 남은 작업: 개인 데이터 IPC/UI·미완료 파일 복구 저널 연결, 현재 공유 snapshot의 API/세트 소유 관계·복구 후보 대조·실제 폴더 접근 격리·파일 저장/삭제 후 개인 데이터 처리·Windows 파일 점유/설치/업데이트 검증. 선택 세트의 파일 저장 문맥과 비밀값 분리/안전한 DTO 생성 계약 연결 전에는 앱 편집값 영구 저장을 활성화하지 않음.
+- 남은 작업: 개인 데이터 IPC/UI·미완료 파일 복구 저널 연결, 현재 공유 snapshot의 API/세트 소유 관계·복구 후보 대조·실제 폴더 접근 격리·파일 저장/삭제 후 개인 데이터 처리·Windows 파일 점유/설치/업데이트 검증. 현재 저장은 일반 공유 입력과 원본 비밀 참조만 허용하며 실제 비밀값·선택 파일은 저장하지 않음. 새 비밀 참조 생성/실제값 관리와 자동 초안 저장은 후속.
 
 ## 02.08 내부 처리 중단·데이터 버전 오류 처리
 

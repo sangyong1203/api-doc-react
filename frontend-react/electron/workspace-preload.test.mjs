@@ -20,9 +20,9 @@ function fixture(invoke, timers = {}) {
 }
 const request = () => ({ requestId: randomUUID(), payload: { source: 'dialog' } })
 
-test('Preload는 구현된 네 채널만 노출하고 취소 응답을 성공으로 구분한다', async () => {
+test('Preload는 구현된 여섯 채널만 노출하고 취소 응답을 성공으로 구분한다', async () => {
   const { bridge, realm, calls } = fixture((_channel, request) => ({ requestId: request.requestId, ok: true, data: { status: 'cancelled' } }))
-  assert.deepEqual(Object.keys(bridge.workspace).sort(), ['create', 'open', 'release', 'snapshot'])
+  assert.deepEqual(Object.keys(bridge.workspace).sort(), ['commit', 'commitStatus', 'create', 'open', 'release', 'snapshot'])
   const result = await bridge.workspace.open(realm(request()))
   assert.equal(result.ok, true); assert.equal(result.data.status, 'cancelled')
   assert.deepEqual(calls, ['workspace:open'])
@@ -56,4 +56,25 @@ test('Preload는 snapshot 대기에 timeout을 적용하고 네이티브 폴더 
   assert.equal(result.error.code, 'IPC_TIMEOUT'); assert.equal(timers, 1)
   const dialog = fixture((_channel, request) => ({ requestId: request.requestId, ok: true, data: { status: 'cancelled' } }), { setTimeout: () => { throw new Error('dialog timer should not run') } })
   assert.equal((await dialog.bridge.workspace.open(dialog.realm(request()))).ok, true)
+})
+
+
+test('Preload는 저장 결과·상태를 검사하고 고정 저장 채널만 호출한다', async () => {
+  const result = { operationId: randomUUID(), revision: `sha256:${'a'.repeat(64)}`, documents: [{ kind: 'api', id: randomUUID(), hash: `sha256:${'b'.repeat(64)}` }], history: 'recorded' }
+  const { bridge, realm, calls } = fixture((channel, request) => ({ requestId: request.requestId, ok: true, data: channel === 'workspace:commit' ? result : { status: 'committed', result } }))
+  assert.equal((await bridge.workspace.commit(realm(request()))).data.history, 'recorded')
+  assert.equal((await bridge.workspace.commitStatus(realm(request()))).data.status, 'committed')
+  assert.deepEqual(calls, ['workspace:commit', 'workspace:commit-status'])
+  for (const data of [{ ...result, history: 'saved?' }, { ...result, path: '/private' }, { ...result, documents: [{ kind: 'api', id: randomUUID(), hash: 'invalid' }] }]) {
+    const invalid = fixture((_channel, request) => ({ requestId: request.requestId, ok: true, data }))
+    assert.equal((await invalid.bridge.workspace.commit(invalid.realm(request()))).error.code, 'IPC_UNAVAILABLE')
+  }
+})
+
+test('저장 응답 유실은 timeout으로 반환하고 상태 조회를 자동 재전송하지 않는다', async () => {
+  let milliseconds
+  const { bridge, realm, calls } = fixture(() => new Promise(() => {}), { setTimeout: (callback, duration) => { milliseconds = duration; callback(); return 0 } })
+  assert.equal((await bridge.workspace.commit(realm(request()))).error.code, 'IPC_TIMEOUT')
+  assert.equal(milliseconds, 30000)
+  assert.deepEqual(calls, ['workspace:commit'])
 })

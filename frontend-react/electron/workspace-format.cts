@@ -1,4 +1,4 @@
-import type { DesktopErrorCode } from '../src/types/desktopData.js'
+import type { DesktopErrorCode, SharedApi, SharedValues, WorkspaceSnapshot } from '../src/types/desktopData.js'
 import { object, requireData, text, uuid, validateHistory } from './personal-data-validation.cjs'
 
 export const WORKSPACE_LIMITS = { fileBytes: 8 * 1024 * 1024, totalBytes: 64 * 1024 * 1024, files: 1000 }
@@ -129,4 +129,37 @@ export function validateWorkspaceBundle(files: Record<string, string>): { id: st
     if (error instanceof WorkspaceError) { throw error }
     throw new WorkspaceError('DOCUMENT_INVALID')
   }
+}
+
+/** UI가 수정할 수 있는 기존 API 한 개만 검증합니다. 다른 세트는 삭제된 필드 정리 외에는 보존합니다. */
+export function validateApiEdit(snapshot: WorkspaceSnapshot, json: string, apiId: string, selectedPresetId: string): SharedApi {
+  const original = snapshot.apis.find(document => document.id === apiId)
+  if (!original) { throw new WorkspaceError('DOCUMENT_INVALID') }
+  const before = JSON.parse(original.json) as SharedApi
+  let after: SharedApi
+  try { after = JSON.parse(json) as SharedApi } catch { throw new WorkspaceError('DOCUMENT_INVALID') }
+  const files = Object.fromEntries([snapshot.workspace, ...snapshot.apis, ...snapshot.environments].map(document => [document.kind === 'workspace' ? 'workspace.json' : `${document.kind === 'api' ? 'apis' : 'environments'}/${document.id}.json`, document.id === apiId ? json : document.json]))
+  validateWorkspaceBundle(files)
+  const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+  const normalized = (value: unknown): unknown => Array.isArray(value) ? value.map(normalized) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : 1).map(([key, item]) => [key, normalized(item)])) : value
+  const same = (a: unknown, b: unknown) => equal(normalized(a), normalized(b))
+  if (after.id !== before.id || after.name !== before.name || after.defaultPresetId !== before.defaultPresetId
+    || !same(after.presets.map(({ id, name, description }) => ({ id, name, description })), before.presets.map(({ id, name, description }) => ({ id, name, description })))
+    || !before.presets.some(preset => preset.id === selectedPresetId)) { throw new WorkspaceError('INVALID_REQUEST') }
+  const pick = <T,>(map: Record<string, T>, ids: string[]) => Object.fromEntries(Object.entries(map).filter(([id]) => ids.includes(id)))
+  const prune = (values: SharedValues): SharedValues => ({ path: pick(values.path, after.request.path.map(field => field.id)), query: pick(values.query, after.request.query.map(field => field.id)), headers: pick(values.headers, after.request.headers.map(field => field.id)),
+    body: { fields: pick(values.body.fields, after.request.body.json.map(field => field.id)), enabled: pick(values.body.enabled, after.request.body.json.map(field => field.id)) }, multipart: pick(values.multipart, after.request.body.multipart.map(field => field.id)) })
+  const cells = (values: SharedValues) => Object.entries({ ...values.path, ...values.query, ...values.headers, ...values.body.fields, ...values.multipart })
+  for (const preset of after.presets) {
+    const old = before.presets.find(old => old.id === preset.id)!
+    if (preset.id !== selectedPresetId && !same(preset.values, prune(old.values))) { throw new WorkspaceError('INVALID_REQUEST') }
+    const originals = new Map(cells(old.values))
+    for (const [id, value] of cells(preset.values)) {
+      const previous = originals.get(id)
+      const oldRef = previous && typeof previous === 'object' ? previous.secretRef : undefined
+      const newRef = typeof value === 'object' ? value.secretRef : undefined
+      if (oldRef !== newRef) { throw new WorkspaceError('INVALID_REQUEST') }
+    }
+  }
+  return after
 }

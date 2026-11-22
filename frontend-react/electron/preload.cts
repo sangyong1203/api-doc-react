@@ -31,9 +31,22 @@ function selection(value: unknown): boolean {
   return keys(connection, ['handle', 'localFolderId', 'workspaceId', 'name']) && uuid(connection.handle) && uuid(connection.localFolderId)
     && uuid(connection.workspaceId) && typeof connection.name === 'string' && snapshot(value.snapshot) && value.snapshot.workspace.id === connection.workspaceId
 }
-const errorCodes = new Set(['INVALID_REQUEST', 'ACCESS_DENIED', 'WORKSPACE_NOT_OPEN', 'WORKSPACE_NOT_FOUND', 'WORKSPACE_ALREADY_EXISTS', 'DOCUMENT_INVALID', 'FORMAT_UNSUPPORTED', 'PATH_NOT_ALLOWED', 'FILE_CONFLICT', 'FILE_READ_FAILED', 'FILE_WRITE_FAILED', 'PAYLOAD_TOO_LARGE', 'BUSY', 'DATABASE_UNAVAILABLE', 'INTERNAL_ERROR'])
+const errorCodes = new Set(['INVALID_REQUEST', 'ACCESS_DENIED', 'WORKSPACE_NOT_OPEN', 'WORKSPACE_NOT_FOUND', 'WORKSPACE_ALREADY_EXISTS', 'DOCUMENT_INVALID', 'FORMAT_UNSUPPORTED', 'PATH_NOT_ALLOWED', 'FILE_CONFLICT', 'FILE_READ_FAILED', 'FILE_WRITE_FAILED', 'PAYLOAD_TOO_LARGE', 'BUSY', 'OPERATION_ID_REUSED', 'WORKSPACE_RECOVERY_REQUIRED', 'DATABASE_UNAVAILABLE', 'INTERNAL_ERROR'])
+function committed(value: unknown): boolean {
+  return plain(value) && keys(value, ['operationId', 'revision', 'documents', 'history']) && uuid(value.operationId) && typeof value.revision === 'string' && hashPattern.test(value.revision)
+    && ['recorded', 'not-required', 'failed', 'unknown'].includes(String(value.history)) && Array.isArray(value.documents) && value.documents.length <= 1000
+    && value.documents.every(document => plain(document) && keys(document, ['kind', 'id', 'hash']) && ['workspace', 'api', 'environment'].includes(String(document.kind)) && uuid(document.id)
+      && (document.hash === null || typeof document.hash === 'string' && hashPattern.test(document.hash)))
+}
+function commitStatus(value: unknown): boolean {
+  if (!plain(value)) { return false }
+  if (value.status === 'pending' || value.status === 'unknown') { return keys(value, ['status']) }
+  if (value.status === 'committed') { return keys(value, ['status', 'result']) && committed(value.result) }
+  return value.status === 'failed' && keys(value, ['status', 'error']) && plain(value.error) && keys(value.error, ['code', 'message'])
+    && errorCodes.has(String(value.error.code)) && typeof value.error.message === 'string' && value.error.message.length <= 512
+}
 /** 고정 채널만 호출하고 응답의 추적 ID·형식을 확인합니다. 네이티브 선택 대기에는 timeout을 두지 않습니다. */
-async function workspaceCall<T>(channel: 'workspace:open' | 'workspace:create' | 'workspace:snapshot' | 'workspace:release', request: DesktopRequest<unknown>, validate: (value: unknown) => boolean): Promise<DesktopResult<T>> {
+async function workspaceCall<T>(channel: 'workspace:open' | 'workspace:create' | 'workspace:snapshot' | 'workspace:release' | 'workspace:commit' | 'workspace:commit-status', request: DesktopRequest<unknown>, validate: (value: unknown) => boolean): Promise<DesktopResult<T>> {
   const requestId = plain(request) && uuid(request.requestId) ? request.requestId : crypto.randomUUID()
   const fail = (code: 'INVALID_REQUEST' | 'IPC_UNAVAILABLE' | 'IPC_TIMEOUT'): DesktopResult<T> => ({ requestId, ok: false, error: { code, message: code === 'INVALID_REQUEST' ? '작업 폴더 요청을 확인해 주세요.' : code === 'IPC_TIMEOUT' ? '작업 폴더 응답을 확인할 수 없습니다. 다시 조회해 주세요.' : '작업 폴더 연결을 확인할 수 없습니다.' } })
   if (!plain(request) || !keys(request, ['requestId', 'payload']) || !uuid(request.requestId)) { return fail('INVALID_REQUEST') }
@@ -41,7 +54,7 @@ async function workspaceCall<T>(channel: 'workspace:open' | 'workspace:create' |
   try {
     const response: unknown = await Promise.race([
       ipcRenderer.invoke(channel, request),
-      new Promise<DesktopResult<T>>(resolve => { if (channel === 'workspace:snapshot' || channel === 'workspace:release') { timer = setTimeout(() => resolve(fail('IPC_TIMEOUT')), 15000) } }),
+      new Promise<DesktopResult<T>>(resolve => { if (channel !== 'workspace:open' && channel !== 'workspace:create') { timer = setTimeout(() => resolve(fail('IPC_TIMEOUT')), channel === 'workspace:commit' ? 30000 : 15000) } }),
     ])
     if (!plain(response) || response.requestId !== requestId || typeof response.ok !== 'boolean') { return fail('IPC_UNAVAILABLE') }
     if (response.ok) {
@@ -57,6 +70,8 @@ const workspaceBridge: DesktopBridge['workspace'] = {
   open: request => workspaceCall('workspace:open', request, selection),
   create: request => workspaceCall('workspace:create', request, selection),
   snapshot: request => workspaceCall('workspace:snapshot', request, snapshot),
+  commit: request => workspaceCall('workspace:commit', request, committed),
+  commitStatus: request => workspaceCall('workspace:commit-status', request, commitStatus),
   release: request => workspaceCall('workspace:release', request, value => value === null),
 }
 const bridge: DesktopBridge = {

@@ -7,6 +7,7 @@ import type { AppCloseState } from '../src/types/desktop.js'
 import { openPersonalDatabase } from './personal-database.cjs'
 import type { PersonalDatabase } from './personal-database.cjs'
 import { WorkspaceService, workspaceResult } from './workspace-service.cjs'
+import { WorkspaceWriter } from './workspace-writer.cjs'
 import { WorkspaceError } from './workspace-format.cjs'
 import { isAppCloseState, isTrustedAppUrl, isTrustedIpcSender } from './ipc-security.cjs'
 
@@ -29,20 +30,20 @@ let workspaceService: Promise<WorkspaceService> | undefined
 function getWorkspaceService(): Promise<WorkspaceService> {
   if (!workspaceService) {
     personalDatabase = openPersonalDatabase({ userData: app.getPath('userData'), appVersion: app.getVersion() })
-    workspaceService = personalDatabase.then(database => new WorkspaceService(database, async () => {
+    workspaceService = Promise.all([personalDatabase, WorkspaceWriter.open(app.getPath('userData'))]).then(([database, writer]) => new WorkspaceService(database, async () => {
       const window = mainWindow
       if (!window || window.isDestroyed()) { throw new WorkspaceError('WORKSPACE_NOT_OPEN') }
       const result = await dialog.showOpenDialog(window, { title: '작업 폴더 선택', properties: ['openDirectory', 'createDirectory'] })
       return result.canceled ? null : result.filePaths[0] ?? null
     }, owner => !closeInProgress && Boolean(mainWindow && !mainWindow.isDestroyed()
-      && mainWindow.webContents.id === owner.windowId && mainWindow.webContents.mainFrame === owner.frame)))
+      && mainWindow.webContents.id === owner.windowId && mainWindow.webContents.mainFrame === owner.frame), writer))
   }
   return workspaceService
 }
 
 function registerWorkspaceIpc() {
-  for (const operation of ['open', 'create', 'snapshot', 'release'] as const) {
-    ipcMain.handle(`workspace:${operation}`, (event, request: unknown) => {
+  for (const operation of ['open', 'create', 'snapshot', 'release', 'commit', 'commitStatus'] as const) {
+    ipcMain.handle(`workspace:${operation === 'commitStatus' ? 'commit-status' : operation}`, (event, request: unknown) => {
       const trusted = !closeInProgress && isTrustedIpcSender(event, mainWindow?.webContents ?? null, devUrl)
       const owner = { windowId: event.sender.id, frame: event.senderFrame! }
       return workspaceResult(request, trusted, async payload => {
@@ -128,6 +129,7 @@ async function requestClose() {
       })
       if (result.response !== 1) { return }
     }
+    await workspaceService?.then(service => service.drain()).catch(() => {})
     await personalDatabase?.then(database => database.close()).catch(() => {})
     exitApproved = true
     window.destroy()
