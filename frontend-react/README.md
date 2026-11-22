@@ -1,6 +1,6 @@
 # API Doc — React
 
-REST API를 등록·호출·문서화·테스트하고, API별 여러 payload 세트를 재사용하는 도구입니다. Electron Windows 앱과 브라우저 개발 화면에서 같은 React UI를 사용합니다. 현재 데이터와 요청 실행은 메모리·샘플 기반이며 실제 파일 저장·개인 DB·API 실행은 후속 구현입니다.
+REST API를 등록·호출·문서화·테스트하고, API별 여러 payload 세트를 재사용하는 도구입니다. Electron Windows 앱과 브라우저 개발 화면에서 같은 React UI를 사용합니다. 현재 화면의 데이터와 요청 실행은 메모리·샘플 기반이며 실제 파일 저장·개인 DB의 화면 연동·API 실행은 후속 구현입니다.
 
 개발 범위·순서·완료 기준은 [개발 기획](../doc/plan.md), 전체 상태는 [개발 진행 현황](../doc/progress.md), 기능별 현재·검증·남은 작업은 현황에서 연결한 `doc/progress/`의 단계별 문서에서 관리합니다. 작업 시 [프로젝트 규칙](../AGENTS.md)을 함께 확인합니다.
 
@@ -81,7 +81,22 @@ npm.cmd run desktop:sqlite-test:packaged
 
 다른 경로의 패키징 앱은 `APIDOC_TEST_EXECUTABLE`에 실행 파일의 절대 경로를 지정합니다. 검증마다 `%TEMP%/apidoc-sqlite-proof-*`에 별도 프로필과 DB를 만들고 두 앱 프로세스를 순서대로 실행합니다. DB 전용 Worker에서 Unicode·JSON 값, 바인딩, WAL, 커밋·제약 오류 후 롤백, 무결성, 재실행 후 데이터 보존과 읽기 전용 쓰기 거부를 확인합니다. 임시 경로는 결과와 함께 출력하며 파일은 확인용으로 남깁니다.
 
-패키징 검증은 로컬 Main 디버거를 통해 ASAR 안의 검사 모듈을 실행합니다. 일반 앱의 Main·Preload는 검사 모듈을 불러오지 않으며 DB API를 화면에 노출하지 않습니다. 현재 검증 기준은 Electron `45.4.1`·내장 Node `24.22.3`·SQLite `3.54.1`입니다. 실제 개인 데이터 테이블·마이그레이션·백업·강제 종료 복구 검증은 후속 작업입니다.
+패키징 검증은 로컬 Main 디버거를 통해 ASAR 안의 검사 모듈을 실행합니다. 일반 앱의 Main·Preload는 검사 모듈을 불러오지 않으며 DB API를 화면에 노출하지 않습니다. 현재 검증 기준은 Electron `45.4.1`·내장 Node `24.22.3`·SQLite `3.54.1`입니다. 이 호환성 검사는 개인 데이터 테이블을 검사하지 않으며, 해당 구현은 아래 명령으로 별도 검증합니다.
+
+### 개인 데이터 저장소 검증
+
+`frontend-react`에서 프로젝트 기준 Node.js 24로 실행합니다.
+
+```sh
+npm run desktop:build
+node --test electron/personal-data.test.mjs electron/personal-database.test.mjs electron/ipc-security.test.mjs
+```
+
+임시 SQLite DB와 실제 Worker를 사용해 스키마·기존 DB 보존·개인 DTO 검증·설정/초안의 revision 충돌·폴더/공간/세션 분리·이력 중복 방지/페이지 조회/보관·시계 역행·Worker 종료 오류를 확인합니다. 초안 합계 128 MiB 경계는 실제 DB에 적재해 검사하고, 이력 전역 512 MiB 정리는 메타데이터 계산으로 검사합니다. 테스트가 만든 임시 DB는 종료 시 정리합니다.
+
+이 명령은 개발 Node.js에서 실행되며 Electron 패키징·설치본 검증을 대신하지 않습니다. macOS 개발 Electron Main·Worker에서 별도 저장·재열기 검증을 수행한 범위와 Windows 검증 상태는 [진행 현황](../doc/progress/02-desktop-workspace.md#0207-sqlite-개인-설정초안저장-이력)을 따릅니다.
+
+개인 데이터 서비스는 Main 내부 전용이며 현재 앱 시작/종료·IPC·UI에 연결하지 않았습니다. 실제 편집값을 저장하기 전에 현재 공유 snapshot의 소유 관계 확인과 비밀값·선택 파일을 제외한 DTO 구성이 필요합니다. 백업·마이그레이션·화면 복원·설치/업데이트 검증은 후속 작업입니다.
 
 ## PC 앱과 저장 방향
 
@@ -89,7 +104,7 @@ npm.cmd run desktop:sqlite-test:packaged
 - API 명세·문서·입력 세트·공유 환경은 작업 폴더의 JSON 파일에 저장하여 외부 Git 도구로 공유합니다.
 - 개인 설정·최근 작업 공간·초안·저장 이력은 앱 사용자 데이터 폴더의 SQLite에 내장 `node:sqlite`로 보관합니다. 인증 비밀값과 업로드 파일 실체는 기본 메모리로 관리합니다.
 - 개발 환경은 위 Node 24 버전을 사용합니다. Electron 내장 Node는 개발 PC의 Node와 별개이며, 앱에서 사용하는 Node API는 선택한 Electron 안정판에서 검증합니다.
-- 개발/패키징 앱의 SQLite 기본 호환성을 확인했으며 설치·업데이트 후 데이터 보존·DB 마이그레이션·백업·이력 보관 정책은 후속 작업입니다. 상세 기준은 [PC 앱 설계](../doc/desktop-design.md)와 [저장 설계](../doc/storage-design.md)를 따릅니다.
+- SQLite 기본 호환성과 개인 저장소 내부의 설정·초안·이력 처리를 검증했으며 실제 앱 연결·설치/업데이트 후 데이터 보존·DB 마이그레이션·백업은 후속 작업입니다. 상세 기준은 [PC 앱 설계](../doc/desktop-design.md)와 [저장 설계](../doc/storage-design.md)를 따릅니다.
 
 ## 저장 포맷 검증
 

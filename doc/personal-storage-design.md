@@ -44,7 +44,7 @@ Main이 한 DB Worker를 소유하며 Worker만 연결·SQL·트랜잭션을 처
 
 ## 4. 테이블 구조
 
-아래는 논리 스키마다. v1 DDL은 [개인 DB 스키마](../frontend-react/electron/personal-database-schema.cts)에서 관리하며 JSON 전체 런타임 검증기는 저장 처리와 함께 구현한다. 날짜는 고정 UTC ISO 8601(밀리초 포함), UUID는 공유 포맷과 같은 소문자 형식이다.
+아래는 논리 스키마다. v1 DDL은 [개인 DB 스키마](../frontend-react/electron/personal-database-schema.cts), JSON 구조·참조 검증은 [개인 DTO 검증기](../frontend-react/electron/personal-data-validation.cts), DB 저장·조회·보관 처리는 [개인 데이터 저장소](../frontend-react/electron/personal-data-store.cts)에서 관리한다. 날짜는 고정 UTC ISO 8601(밀리초 포함), UUID는 공유 포맷과 같은 소문자 형식이다.
 
 | 테이블 | 키·주요 컬럼 | 관계·제약 |
 | --- | --- | --- |
@@ -104,6 +104,7 @@ v1 본문은 `{payloadVersion, common, selectedPreset: {id, name, values}}`다. 
 
 - 비밀값 실제값은 메모리 저장소에 두며 영구 DTO에는 `secretRef` 또는 명시적 미입력 상태만 사용한다. `***`를 실제 복원값으로 사용하지 않는다.
 - Main은 허용 필드로 영구 DTO를 새로 구성하고 검증한다. 문자열 검색만으로 비밀값 제거를 보장하지 않는다. 입력값의 비밀 구분·주입 계약(04.04)이 연결되기 전에는 안전성이 확인되지 않은 값 영구 저장을 활성화하지 않는다.
+- [개인 데이터 내부 계약](../frontend-react/electron/personal-data-contract.cts)은 Main 서비스 전용이다. `rememberWorkspace` 호출 전에는 경로·manifest를 확인하고, 저장 호출 전에는 현재 snapshot의 API·세트 소유 관계와 안전한 DTO 구성을 확인한다. preset 초안의 `commonJson`은 현재 API의 필드·파일 행 참조 검사용이며 DB에 함께 저장하지 않는다. 복구 후보 조회는 이전 명세의 편집값을 보존하므로 현재 화면에 적용하기 전에 다시 대조한다.
 - 특히 rawBodyText·문서 예시·URL은 실제 비밀값이 섞일 수 있다. 비밀 필드가 포함되거나 분리 여부를 확인할 수 없는 JSON 원문은 저장하지 않고 재입력 필요 상태로 안내한다. 안전한 구조화 값만 저장하며 원문을 몰래 마스킹해 복구했다고 표시하지 않는다.
 - Multipart 파일 행은 활성 상태와 명세만 보관하고 복원 후 재선택을 요구한다. 오류·로그·백업·내보내기에도 같은 제외 규칙을 적용한다.
 

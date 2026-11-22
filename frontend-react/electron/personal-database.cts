@@ -1,9 +1,11 @@
 import path from 'node:path'
 import { Worker } from 'node:worker_threads'
+import type { PersonalDataClient, PersonalOperation } from './personal-data-contract.cjs'
 import { PersonalDatabaseError } from './personal-database-contract.cjs'
 import type { PersonalDatabaseErrorCode, PersonalDatabaseStatus } from './personal-database-contract.cjs'
 
 export type PersonalDatabase = {
+  personal: PersonalDataClient
   status: () => Promise<PersonalDatabaseStatus>
   /** 신규 접수를 차단하고 먼저 받은 작업·연결 종료·Worker 종료까지 기다립니다. 중복 호출은 같은 Promise를 반환합니다. */
   close: () => Promise<void>
@@ -12,7 +14,7 @@ export type PersonalDatabase = {
 type WorkerReply =
   | { kind: 'ready'; status: PersonalDatabaseStatus }
   | { kind: 'failed'; error: { code: PersonalDatabaseErrorCode } }
-  | { kind: 'result'; id: number; ok: true; data: PersonalDatabaseStatus | null }
+  | { kind: 'result'; id: number; ok: true; data: unknown }
   | { kind: 'result'; id: number; ok: false; error: { code: PersonalDatabaseErrorCode } }
 
 /**
@@ -28,7 +30,7 @@ export function openPersonalDatabase(options: { userData: string; appVersion: st
     let nextId = 0
     let closePromise: Promise<void> | undefined
     const pending = new Map<number, {
-      resolve: (value: PersonalDatabaseStatus | null) => void
+      resolve: (value: unknown) => void
       reject: (error: PersonalDatabaseError) => void
     }>()
     let resolveExit: () => void
@@ -43,15 +45,16 @@ export function openPersonalDatabase(options: { userData: string; appVersion: st
       for (const item of pending.values()) { item.reject(failure) }
       pending.clear()
     }
-    const request = (operation: 'status' | 'close'): Promise<PersonalDatabaseStatus | null> => {
+    const request = <T,>(operation: 'status' | 'close' | PersonalOperation, input?: unknown): Promise<T> => {
       if (failure || (stopping && operation !== 'close') || nextId >= Number.MAX_SAFE_INTEGER) {
         return Promise.reject(failure ?? new PersonalDatabaseError('DATABASE_UNAVAILABLE'))
       }
       return new Promise((done, failRequest) => {
         const id = ++nextId
-        pending.set(id, { resolve: done, reject: failRequest })
-        try { worker.postMessage({ id, operation }) } catch {
+        pending.set(id, { resolve: value => done(value as T), reject: failRequest })
+        try { worker.postMessage(input === undefined ? { id, operation } : { id, operation, input }) } catch {
           fail(new PersonalDatabaseError('DATABASE_UNAVAILABLE'))
+          void worker.terminate()
         }
       })
     }
@@ -60,9 +63,22 @@ export function openPersonalDatabase(options: { userData: string; appVersion: st
         fail(new PersonalDatabaseError(reply.error.code))
       } else if (reply.kind === 'ready') {
         ready = true
+        const personal: PersonalDataClient = {
+          rememberWorkspace: input => request('rememberWorkspace', input),
+          preferences: input => request('preferences', input),
+          savePreferences: input => request('savePreferences', input),
+          drafts: input => request('drafts', input),
+          draft: input => request('draft', input),
+          saveDraft: input => request('saveDraft', input),
+          removeDraft: input => request('removeDraft', input),
+          recordHistory: input => request('recordHistory', input),
+          history: input => request('history', input),
+          historyEntry: input => request('historyEntry', input),
+        }
         resolve({
+          personal,
           async status() {
-            const status = await request('status')
+            const status = await request<PersonalDatabaseStatus>('status')
             if (!status) { throw new PersonalDatabaseError('DATABASE_UNAVAILABLE') }
             return status
           },

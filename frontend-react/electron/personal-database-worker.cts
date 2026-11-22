@@ -1,11 +1,15 @@
 import { isMainThread, parentPort, workerData } from 'node:worker_threads'
 import type { DatabaseSync } from 'node:sqlite'
+import { PersonalDataStore } from './personal-data-store.cjs'
+import { PERSONAL_OPERATIONS } from './personal-data-contract.cjs'
+import type { PersonalOperation } from './personal-data-contract.cjs'
 import { PersonalDatabaseError } from './personal-database-contract.cjs'
 import { openPersonalDatabaseConnection, personalDatabaseStatus } from './personal-database-schema.cjs'
 
 if (isMainThread || !parentPort) { throw new Error('개인 DB는 전용 Worker에서만 실행합니다.') }
 const port = parentPort
 let database: DatabaseSync | undefined
+let store: PersonalDataStore | undefined
 let accepting = true
 let queue = Promise.resolve()
 
@@ -20,6 +24,7 @@ try {
     throw new PersonalDatabaseError('DATABASE_UNAVAILABLE')
   }
   database = openPersonalDatabaseConnection(options.userData, options.appVersion)
+  store = new PersonalDataStore(database)
   port.postMessage({ kind: 'ready', status: personalDatabaseStatus(database) })
 } catch (error) {
   port.postMessage({ kind: 'failed', error: failure(error) })
@@ -30,10 +35,13 @@ try {
 // Promise 큐를 사용해 향후 비동기 백업도 완료될 때까지 다음 DB 작업을 시작하지 않습니다.
 port.on('message', (message: unknown) => {
   if (!accepting) { return }
-  const request = message as { id?: unknown; operation?: unknown } | null
+  const request = message as { id?: unknown; operation?: unknown; input?: unknown } | null
   if (!request || typeof request !== 'object' || Array.isArray(request)
-    || Object.keys(request).length !== 2 || !Number.isSafeInteger(request.id) || Number(request.id) < 1
-    || (request.operation !== 'status' && request.operation !== 'close')) {
+    || !Number.isSafeInteger(request.id) || Number(request.id) < 1
+    || (request.operation === 'status' || request.operation === 'close'
+      ? Object.keys(request).length !== 2
+      : typeof request.operation !== 'string' || !PERSONAL_OPERATIONS.includes(request.operation as PersonalOperation)
+        || Object.keys(request).length !== 3 || !Object.hasOwn(request, 'input'))) {
     accepting = false
     queue = queue.then(() => {
       port.postMessage({ kind: 'failed', error: failure(null) })
@@ -53,11 +61,16 @@ port.on('message', (message: unknown) => {
         database = undefined
         port.postMessage({ kind: 'result', id, ok: true, data: null })
         port.close()
-      } else {
+      } else if (operation === 'status') {
         port.postMessage({ kind: 'result', id, ok: true, data: personalDatabaseStatus(database) })
+      } else {
+        if (!store) { throw new PersonalDatabaseError('DATABASE_UNAVAILABLE') }
+        port.postMessage({ kind: 'result', id, ok: true, data: store.execute(operation as PersonalOperation, request.input) })
       }
     } catch (error) {
       port.postMessage({ kind: 'result', id, ok: false, error: failure(error) })
+      // 검증·충돌·일반 쓰기 실패는 요청 단위로 반환합니다. 읽기 불가/미지원 버전만 연결을 차단합니다.
+      if (error instanceof PersonalDatabaseError && error.code !== 'DATABASE_UNAVAILABLE' && error.code !== 'DATABASE_VERSION_UNSUPPORTED') { return }
       accepting = false
       try { database?.close() } catch { /* Worker 종료 시 SQLite가 남은 연결을 회수합니다. */ }
       port.close()
