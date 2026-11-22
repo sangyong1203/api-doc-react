@@ -43,10 +43,11 @@
 
 상태: **진행 중**
 
-- 현재: 내장 SQLite Worker 호환성 확인. [개인 저장소 설계안](../personal-storage-design.md)에 테이블·격리·보관·백업/마이그레이션 기준 작성. 실제 저장소는 미연결.
+- 현재: [개인 저장소 설계안](../personal-storage-design.md)에 따른 DB 전용 Worker·v1 STRICT 테이블 7개·조회 인덱스·원자적 초기 생성 구현. 기존 DB의 읽기 전용 사전 검사와 식별·버전·migration·DDL·무결성 검증, 직렬 요청·정상 종료·안전한 오류 반환 제공. 실제 앱 수명 주기·저장/복원·IPC·UI는 미연결.
 - 검증: 2026-11-20 개발/Windows ASAR 앱에서 Electron 45.4.1·Node 24.22.3·SQLite 3.54.1 로드, 저장·조회·커밋·롤백·무결성·별도 앱 재실행 후 보존·읽기 전용 쓰기 거부 통과. 타입 검사·린트·빌드·패키징 통과. 명령은 [README](../../frontend-react/README.md#내장-sqlite-호환성-검증) 참조.
 - 검증: 2026-11-22 macOS arm64 개발 Electron에서도 같은 런타임 버전으로 `desktop:sqlite-test` 통과. 임시 프로필의 실제 Worker·SQLite에서 저장·조회·WAL·커밋·롤백·무결성·별도 앱 재실행 후 보존·읽기 전용 쓰기 거부 확인. 프로젝트 타입 검사 통과. macOS 패키징·설치본은 미검증.
-- 남은 작업: 런타임 스키마·DB/IPC 구현, 실제 저장·복원·폴더 격리 및 실패 복구·설치/업데이트 검증. 선택 세트의 파일 저장 문맥과 비밀값 분리 계약 연결 필요.
+- 검증: [개인 DB 테스트](../../frontend-react/electron/personal-database.test.mjs)에서 재열기·폴더/공간/세션 키·FK·자료형/크기 제약·이력 중복·롤백·미지원/손상 DB 보존·Worker 종료 오류 확인. `frontend-react`에서 `npm run desktop:build` 후 `node --test electron/personal-database.test.mjs electron/ipc-security.test.mjs`로 실행. macOS 개발 Electron의 실제 Main에서 새 서비스의 생성·연속 요청·정상 종료·재열기 확인. 타입 검사·린트 통과. 새 기반 모듈의 Windows 실행·ASAR 검증은 남아 있음.
+- 남은 작업: 개인 DTO 전체 런타임 검증·설정/초안/이력 처리·CAS·보관 정책·백업/마이그레이션·앱 수명 주기/IPC/UI 연결, 실제 저장·복원·폴더 접근 격리 및 실패 복구·설치/업데이트 검증. 선택 세트의 파일 저장 문맥과 비밀값 분리 계약 연결 필요.
 
 ## 02.08 내부 처리 중단·데이터 버전 오류 처리
 
