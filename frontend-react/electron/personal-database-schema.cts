@@ -3,7 +3,7 @@ import { openSync, closeSync, mkdirSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
-import { PersonalDatabaseError } from './personal-database-contract.cjs'
+import { PERSONAL_RECOVERY_MARKER, PersonalDatabaseError } from './personal-database-contract.cjs'
 import type { PersonalDatabaseStatus } from './personal-database-contract.cjs'
 
 export const PERSONAL_SCHEMA_VERSION = 1
@@ -92,6 +92,17 @@ export const PERSONAL_SCHEMA_SQL = [
 
 export const PERSONAL_MIGRATION_CHECKSUM = createHash('sha256').update(PERSONAL_SCHEMA_SQL.join(';\n')).digest('hex')
 
+export type PersonalSchema = {
+  version: number
+  statements: readonly string[]
+  migrations: readonly { version: number; checksum: string }[]
+}
+export const PERSONAL_SCHEMA: PersonalSchema = {
+  version: PERSONAL_SCHEMA_VERSION,
+  statements: PERSONAL_SCHEMA_SQL,
+  migrations: [{ version: 1, checksum: PERSONAL_MIGRATION_CHECKSUM }],
+}
+
 function scalar(database: DatabaseSync, sql: string): unknown {
   const row = database.prepare(sql).get()
   return row ? Object.values(row)[0] : undefined
@@ -114,20 +125,20 @@ function normalizedSql(sql: string): string {
 }
 
 /** 기존 파일은 버전 숫자뿐 아니라 migration·DDL·외래 키·JSON 버전까지 검사합니다. */
-function verifyDatabase(database: DatabaseSync): void {
+export function verifyPersonalSchema(database: DatabaseSync, schema: PersonalSchema = PERSONAL_SCHEMA): void {
   if (scalar(database, 'PRAGMA application_id') !== PERSONAL_APPLICATION_ID) {
     throw new PersonalDatabaseError('DATABASE_UNAVAILABLE')
   }
   const version = Number(scalar(database, 'PRAGMA user_version'))
-  if (version > PERSONAL_SCHEMA_VERSION) { throw new PersonalDatabaseError('DATABASE_VERSION_UNSUPPORTED') }
-  if (version !== PERSONAL_SCHEMA_VERSION) { throw new PersonalDatabaseError('DATABASE_UNAVAILABLE') }
+  if (version > schema.version) { throw new PersonalDatabaseError('DATABASE_VERSION_UNSUPPORTED') }
+  if (version !== schema.version) { throw new PersonalDatabaseError('DATABASE_UNAVAILABLE') }
 
   const objects = database.prepare("SELECT sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY name").all()
-  const expected = PERSONAL_SCHEMA_SQL.map(normalizedSql).sort()
+  const expected = schema.statements.map(normalizedSql).sort()
   const actual = objects.map((row) => typeof row.sql === 'string' ? normalizedSql(row.sql) : '').sort()
   if (JSON.stringify(actual) !== JSON.stringify(expected)) { throw new PersonalDatabaseError('DATABASE_UNAVAILABLE') }
   const migrations = database.prepare('SELECT version, applied_at, app_version, migration_checksum FROM schema_migrations ORDER BY version').all()
-  if (migrations.length !== 1 || migrations[0].version !== 1 || migrations[0].migration_checksum !== PERSONAL_MIGRATION_CHECKSUM) {
+  if (migrations.length !== schema.migrations.length || migrations.some((row, index) => row.version !== schema.migrations[index].version || row.migration_checksum !== schema.migrations[index].checksum)) {
     throw new PersonalDatabaseError('DATABASE_UNAVAILABLE')
   }
   if (database.prepare('PRAGMA foreign_key_check').all().length !== 0) { throw new PersonalDatabaseError('DATABASE_UNAVAILABLE') }
@@ -144,13 +155,14 @@ function verifyDatabase(database: DatabaseSync): void {
  * Worker 내부 전용. userData는 Main이 선택한 절대 경로, appVersion은 비어 있지 않은 앱 버전(최대 128자)입니다.
  * 기존 DB는 읽기 전용으로 검사하며 알 수 없는 DB나 생성 중 남은 빈 파일을 다시 초기화하지 않습니다.
  */
-export function openPersonalDatabaseConnection(userData: string, appVersion: string): DatabaseSync {
+export function openPersonalDatabaseConnection(userData: string, appVersion: string, schema: PersonalSchema = PERSONAL_SCHEMA): DatabaseSync {
   if (!path.isAbsolute(userData) || !appVersion.trim() || appVersion.length > 128) {
     throw new PersonalDatabaseError('DATABASE_UNAVAILABLE')
   }
   let database: DatabaseSync | undefined
   let writing = false
   try {
+    if (existsSync(path.join(userData, PERSONAL_RECOVERY_MARKER))) { throw new PersonalDatabaseError('DATABASE_UNAVAILABLE') }
     mkdirSync(userData, { recursive: true })
     const databasePath = path.join(userData, 'personal.sqlite')
     let created = false
@@ -164,11 +176,12 @@ export function openPersonalDatabaseConnection(userData: string, appVersion: str
     const options = { allowExtension: false, enableForeignKeyConstraints: true, timeout: 1000 }
     if (!created) {
       const inspection = new DatabaseSync(databasePath, { ...options, readOnly: true })
-      try { verifyDatabase(inspection) } finally { inspection.close() }
+      try { verifyPersonalSchema(inspection, schema) } finally { inspection.close() }
       if (!existsSync(databasePath)) { throw new PersonalDatabaseError('DATABASE_UNAVAILABLE') }
     }
     database = new DatabaseSync(databasePath, options)
     if (created) {
+      if (schema.version !== 1) { throw new PersonalDatabaseError('DATABASE_VERSION_UNSUPPORTED') }
       writing = true
       database.exec('BEGIN IMMEDIATE')
       try {
@@ -176,7 +189,7 @@ export function openPersonalDatabaseConnection(userData: string, appVersion: str
         database.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?, ?)')
           .run(1, new Date().toISOString(), appVersion, PERSONAL_MIGRATION_CHECKSUM)
         database.exec(`PRAGMA application_id = ${PERSONAL_APPLICATION_ID}; PRAGMA user_version = ${PERSONAL_SCHEMA_VERSION}`)
-        verifyDatabase(database)
+        verifyPersonalSchema(database, schema)
         database.exec('COMMIT')
       } catch (error) {
         database.exec('ROLLBACK')
@@ -184,7 +197,7 @@ export function openPersonalDatabaseConnection(userData: string, appVersion: str
       }
     } else {
       // 읽기 전용 검사 이후 정상 연결에서도 같은 식별·버전·DDL인지 재검사합니다.
-      verifyDatabase(database)
+      verifyPersonalSchema(database, schema)
     }
     writing = true
     database.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA busy_timeout = 1000')

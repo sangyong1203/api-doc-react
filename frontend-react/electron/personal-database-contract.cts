@@ -26,3 +26,10 @@ export type PersonalDatabaseStatus = {
   synchronous: number
   busyTimeoutMs: number
 }
+
+
+export const PERSONAL_RECOVERY_MARKER = 'personal-recovery.json'
+/** Main이 소유하는 백업 파일 참조입니다. Renderer에 경로 입력/출력 API로 노출하지 않습니다. */
+export type PersonalBackupReference = { databasePath: string; metadataPath: string }
+export type PersonalBackup = PersonalBackupReference & { id: string; schemaVersion: number }
+export type PersonalRecoveryResult = { operationId: string; preservedDirectory: string }

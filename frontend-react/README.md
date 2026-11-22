@@ -89,14 +89,16 @@ npm.cmd run desktop:sqlite-test:packaged
 
 ```sh
 npm run desktop:build
-node --test electron/personal-data.test.mjs electron/personal-database.test.mjs electron/ipc-security.test.mjs
+node --test electron/personal-database-maintenance.test.mjs electron/personal-data.test.mjs electron/personal-database.test.mjs electron/ipc-security.test.mjs
 ```
 
 임시 SQLite DB와 실제 Worker를 사용해 스키마·기존 DB 보존·개인 DTO 검증·설정/초안의 revision 충돌·폴더/공간/세션 분리·이력 중복 방지/페이지 조회/보관·시계 역행·Worker 종료 오류를 확인합니다. 초안 합계 128 MiB 경계는 실제 DB에 적재해 검사하고, 이력 전역 512 MiB 정리는 메타데이터 계산으로 검사합니다. 테스트가 만든 임시 DB는 종료 시 정리합니다.
 
-이 명령은 개발 Node.js에서 실행되며 Electron 패키징·설치본 검증을 대신하지 않습니다. macOS 개발 Electron Main·Worker에서 별도 저장·재열기 검증을 수행한 범위와 Windows 검증 상태는 [진행 현황](../doc/progress/02-desktop-workspace.md#0207-sqlite-개인-설정초안저장-이력)을 따릅니다.
+유지보수 테스트는 WAL 백업·해시/무결성 검증·변조/공간 부족 거부·자동 백업 보관·순차 migration 롤백을 확인합니다. 복구 네 단계와 migration COMMIT 전/후에 자식 프로세스를 강제 종료해 원본·후보 보존과 명시적 원본 복귀도 검사합니다. Windows 파일 점유는 모의 오류 검사이며 실제 Windows 검증을 대신하지 않습니다. 배포 DB는 v1이고 테스트의 v2·v3는 엔진 검증용 fixture입니다.
 
-개인 데이터 서비스는 Main 내부 전용이며 현재 앱 시작/종료·IPC·UI에 연결하지 않았습니다. 실제 편집값을 저장하기 전에 현재 공유 snapshot의 소유 관계 확인과 비밀값·선택 파일을 제외한 DTO 구성이 필요합니다. 백업·마이그레이션·화면 복원·설치/업데이트 검증은 후속 작업입니다.
+이 명령은 개발 Node.js에서 실행되며 Electron 패키징·설치본 검증을 대신하지 않습니다. macOS 개발 Electron Main·Worker에서 별도 저장·재열기·백업·원본 보존 복구·손상 DB 복구를 검증한 범위와 Windows 검증 상태는 [진행 현황](../doc/progress/02-desktop-workspace.md#0207-sqlite-개인-설정초안저장-이력)을 따릅니다.
+
+개인 데이터·백업·복구 서비스는 Main 내부 전용이며 현재 앱 시작/종료·IPC·UI에 연결하지 않았습니다. 실제 편집값을 저장하기 전에 현재 공유 snapshot의 소유 관계 확인과 비밀값·선택 파일을 제외한 DTO 구성이 필요합니다. 복구 호출 전에는 사용자 선택·미저장 편집 처리·미완료 파일 복구 저널 확인과 연결 종료가 필요합니다. 복구 표식이 남아 있으면 정상 열기를 차단하며 표식을 자동 삭제하거나 백업으로 자동 교체하지 않습니다. 단계별 절차는 [개인 저장소 설계](../doc/personal-storage-design.md#복구-단계와-중단-처리)를 따릅니다. 실제 화면 복원·Windows 파일 점유·설치/업데이트 검증은 후속 작업입니다.
 
 ## PC 앱과 저장 방향
 
@@ -104,7 +106,7 @@ node --test electron/personal-data.test.mjs electron/personal-database.test.mjs 
 - API 명세·문서·입력 세트·공유 환경은 작업 폴더의 JSON 파일에 저장하여 외부 Git 도구로 공유합니다.
 - 개인 설정·최근 작업 공간·초안·저장 이력은 앱 사용자 데이터 폴더의 SQLite에 내장 `node:sqlite`로 보관합니다. 인증 비밀값과 업로드 파일 실체는 기본 메모리로 관리합니다.
 - 개발 환경은 위 Node 24 버전을 사용합니다. Electron 내장 Node는 개발 PC의 Node와 별개이며, 앱에서 사용하는 Node API는 선택한 Electron 안정판에서 검증합니다.
-- SQLite 기본 호환성과 개인 저장소 내부의 설정·초안·이력 처리를 검증했으며 실제 앱 연결·설치/업데이트 후 데이터 보존·DB 마이그레이션·백업은 후속 작업입니다. 상세 기준은 [PC 앱 설계](../doc/desktop-design.md)와 [저장 설계](../doc/storage-design.md)를 따릅니다.
+- SQLite 기본 호환성과 개인 저장소 내부의 설정·초안·이력·백업/복구·순차 migration 기반을 검증했으며 실제 앱 연결·Windows 실행/설치/업데이트 후 데이터 보존 검증은 후속 작업입니다. 상세 기준은 [PC 앱 설계](../doc/desktop-design.md)와 [저장 설계](../doc/storage-design.md)를 따릅니다.
 
 ## 저장 포맷 검증
 

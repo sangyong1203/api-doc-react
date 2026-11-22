@@ -139,6 +139,8 @@ v1 본문은 `{payloadVersion, common, selectedPreset: {id, name, values}}`다. 
 
 ### 업그레이드
 
+등록된 배포 스키마는 v1이다. [순차 migration 엔진](../frontend-react/electron/personal-database-migrations.cts)의 소스 레지스트리에 검토된 다음 버전만 추가한다. 테스트의 v2·v3 fixture는 엔진 검증용이며 배포 DB 버전을 올리지 않는다. SQL·변환 함수·대상 버전은 Main/Renderer 요청으로 받지 않는다.
+
 1. 개인 데이터 API 접수를 막고 큐·트랜잭션 종료를 기다린다. 미완료 파일 복구 저널이 있다면 먼저 복구 판단을 마치며 DB 변경과 혼합하지 않는다.
 2. 업그레이드 전 원본의 독립 백업을 만들고 검증한다. 백업 실패·공간 부족이면 업그레이드를 시작하지 않는다.
 3. 지원하는 순차 migration을 하나의 트랜잭션에서 실행한다. 변경 SQL·데이터 변환·payload version·migration 기록·user_version을 함께 갱신한다. 트랜잭션 안에서 실행할 수 없는 작업은 migration에 섞지 않는다.
@@ -153,10 +155,26 @@ v1 본문은 `{payloadVersion, common, selectedPreset: {id, name, values}}`다. 
 - WAL 사용 중인 DB의 `personal.sqlite` 하나만 파일 복사하지 않는다. Node backup API와 SQLite Online Backup을 사용하며, 실제 Electron에서의 백업·실패 동작은 구현 시 별도 검증한다. [Node backup API](https://github.com/nodejs/node/blob/v24.x/doc/api/sqlite.md#sqlitebackupsourceDb-path-options), [SQLite 백업](https://sqlite.org/backup.html) 참조.
 - 이름은 Main이 UTC 시각·DB 버전·UUID로 생성하고 별도 메타데이터에 앱 버전·SHA-256·생성 목적을 기록한다. 백업 파일도 개인 데이터이며 암호화 저장소로 취급하지 않는다.
 - 자동 백업은 마이그레이션 전 실행한다. 정기 주기 백업은 이번 v1 범위에서 약속하지 않는다. 수동 내보내기는 검증된 독립 SQLite 백업과 메타데이터를 사용자 선택 위치에 생성한다.
+- [백업 모듈](../frontend-react/electron/personal-database-backup.cts)은 지정 디렉터리 아래 새 `<UTC>-v<버전>-<UUID>/`를 배타적으로 생성한다. 임시 사본에만 DELETE journal 모드를 적용해 WAL 의존성을 없앤 뒤 `personal.sqlite`·`metadata.json`으로 확정한다. 실패한 임시 파일은 보존하며, 자동 정리는 migration 사후 검증이 끝난 백업에만 적용한다. 시계가 역행해도 방금 완료한 migration의 사전 백업은 우선 보존한다.
 - 복구는 사용자 선택·현재 편집 처리 확인 후 앱의 개인 저장소 접수를 중지하고 후보를 읽기 전용으로 검사한다. 상위 버전·손상·변조/해시 불일치는 거부한다. 검증한 임시 사본과 현재 DB를 보존하고 모든 연결을 닫은 상태에서 교체한다.
-- 기존 DB와 WAL/SHM은 한 묶음으로 보존한다. 열린 연결이나 남은 sidecar에 새 DB만 덮어쓰지 않는다. Windows 파일 점유와 교체 중단 시 원본/후보를 남기는 단계별 복구 절차는 구현 전 테스트로 구체화한다.
+- 기존 DB와 WAL/SHM은 한 묶음으로 보존한다. 열린 연결이나 남은 sidecar에 새 DB만 덮어쓰지 않는다. [복구 모듈](../frontend-react/electron/personal-database-recovery.cts)은 아래 단계와 중단 시 원본 복귀를 사용한다. Windows 파일 점유는 오류 주입과 실제 Windows 검증을 구분한다.
 - 복구한 recent 경로와 ID는 접근 권한이 아니다. 다른 PC에서 가져온 폴더 연결은 자동 사용하지 않고 네이티브 재선택·manifest 확인 후 재연결한다. 외부 백업이 임의 경로 접근의 근거가 되어서는 안 된다.
 - 전체 초기화 전에는 사용자 확인과 사전 백업을 요구한다. 작업 폴더의 공유 JSON은 삭제하지 않는다. 소프트웨어 삭제는 이전 백업과 디스크의 물리적 안전 삭제를 보장하지 않는다.
+
+### 복구 단계와 중단 처리
+
+Main은 사용자 선택·편집 처리·미완료 파일 복구 저널 확인을 먼저 마친다. 정상 서비스의 `restore()`는 새 요청을 차단하고 앞선 작업을 완료한 뒤 DB를 닫는다. 손상 DB 또는 미완료 복구는 모든 연결을 닫은 상태에서 별도 복구 Worker의 `recoverPersonalDatabase()`를 사용한다. 같은 Main에서 해당 프로필을 사용 중이면 별도 복구를 거부한다. 이 내부 API는 현재 앱·IPC·UI에 연결하지 않는다.
+
+| 단계 | 처리와 보존 |
+| --- | --- |
+| prepared | 백업·복사본의 해시/스키마/무결성을 검사하고 `personal-recovery-<UUID>/candidate.sqlite`와 `personal-recovery.json` 생성 |
+| original-preserved | 기존 `personal.sqlite`와 남은 WAL/SHM을 같은 작업 디렉터리의 `original/`에 보존 |
+| candidate-installed | 배타적 파일 링크와 원본 링크 제거로 후보 설치. 기존 목적지는 덮어쓰지 않음 |
+| verified | 설치된 DB를 재검사하고 결과를 남긴 뒤 표식 제거. 원본 보존 디렉터리는 유지 |
+
+- 표식이 있으면 초기 생성·migration·정상 열기를 모두 차단한다. `inspectPersonalRecovery()`는 Main에 작업 ID·단계만 제공한다. 손상되거나 알 수 없는 표식을 자동 삭제하지 않는다.
+- 실패·중단 후 사용자가 원본 복귀를 선택하면 같은 작업 ID의 `rollback`만 실행한다. link 직후 중단된 중복 링크를 구분하고 설치 후보를 보존한 뒤 원본·sidecar를 되돌린다. 복귀 과정도 중단되면 표식과 파일을 남기며 다음 명시적 복귀를 기다린다.
+- 성공한 복구 뒤에는 새 서비스를 열어 상태를 검사한다. 백업 안의 최근 경로·ID를 권한으로 사용하거나 기존 handle을 계속 사용하지 않는다. 네이티브 폴더 재선택·manifest 확인과 UI 연결은 후속 계층의 책임이다.
 
 ## 9. 오류와 구현 검증 기준
 
