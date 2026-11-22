@@ -18,6 +18,8 @@
 
 Main이 한 DB Worker를 소유하며 Worker만 연결·SQL·트랜잭션을 처리한다. Main은 검증한 작업 DTO를 전달하고 Renderer에 SQL·DB 경로·임의 키 접근을 노출하지 않는다.
 
+현재 앱은 첫 작업 폴더 요청에서 개인 DB를 열고 정상 종료 시 Worker 종료를 기다린다. 연결한 폴더의 경로·workspace ID·표시 이름만 내부 `rememberWorkspace`/`workspacePath`로 관리하며 경로는 Renderer에 반환하지 않는다. 편집값 자동 저장·개인 설정/초안/이력 UI·백업/복구 UI는 아직 연결하지 않는다.
+
 - 연결은 `DatabaseSync`, 외래 키 활성화, 확장 로드 비활성화. `STRICT` 테이블과 매개변수 바인딩 사용.
 - 정상 쓰기 모드에서 `journal_mode=WAL`, `synchronous=FULL`, 잠금 대기 상한 1,000ms를 적용하고 설정 결과를 확인한다. WAL 활성화 전에 기존 DB의 식별·버전을 검사한다.
 - Worker 큐는 백업·마이그레이션을 포함해 직렬 처리한다. 비동기 백업 중에도 다음 DB 작업을 시작하지 않는다. 정상 종료는 새 작업 접수 중단→진행 작업 완료→연결 종료 순서다.

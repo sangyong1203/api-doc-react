@@ -5,48 +5,18 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 
-async function connect(port) {
-  const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
-  assert.equal(targets.length, 1, '테스트할 앱 대상은 한 개여야 합니다.')
-  const socket = new WebSocket(targets[0].webSocketDebuggerUrl)
-  await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, { once: true }); socket.addEventListener('error', reject, { once: true }) })
-  let nextId = 0
-  const pending = new Map()
-  socket.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data)
-    const item = pending.get(message.id)
-    if (item) {
-      pending.delete(message.id)
-      clearTimeout(item.timeout)
-      if (message.error) { item.reject(new Error(JSON.stringify(message.error))) } else { item.resolve(message.result) }
-    }
-  })
-  return {
-    close: () => socket.close(),
-    send(method, params) {
-      return new Promise((resolve, reject) => {
-        const id = ++nextId
-        const timeout = setTimeout(() => { pending.delete(id); reject(new Error(`디버거 응답 시간 초과: ${method}`)) }, 10000)
-        pending.set(id, { resolve, reject, timeout })
-        socket.send(JSON.stringify({ id, method, params }))
-      })
-    },
-    async evaluate(expression) {
-      const result = await this.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
-      if (result.exceptionDetails) { throw new Error(JSON.stringify(result.exceptionDetails)) }
-      return result.result.value
-    },
-  }
-}
+import { connect } from './debug-client.mjs'
 
 const renderer = await connect(Number(process.env.APIDOC_RENDERER_PORT ?? 9333))
 const main = await connect(Number(process.env.APIDOC_MAIN_PORT ?? 9334))
+assert.ok(process.env.APIDOC_TEST_USER_DATA_DIR, '검증용 임시 프로필을 APIDOC_TEST_USER_DATA_DIR로 지정해야 합니다.')
+assert.equal(await main.evaluate("process.mainModule.require('node:path').resolve(process.mainModule.require('electron').app.getPath('userData'))"), path.resolve(process.env.APIDOC_TEST_USER_DATA_DIR), '검증용 프로필이 아닌 앱에는 테스트를 실행하지 않습니다.')
 let dialogPatched = false
 try {
   const versions = await renderer.evaluate('window.apidocDesktop?.versions')
   assert.equal(versions.electron, '45.4.1')
   assert.equal(versions.node, '24.22.3')
-  assert.deepEqual(await renderer.evaluate('Object.keys(window.apidocDesktop).sort()'), ['onCloseRequested', 'respondToClose', 'versions'])
+  assert.deepEqual(await renderer.evaluate('Object.keys(window.apidocDesktop).sort()'), ['onCloseRequested', 'respondToClose', 'versions', 'workspace'])
   assert.deepEqual(await renderer.evaluate('({url:location.href,node:typeof process,require:typeof require,toolbar:!!document.querySelector(".request-toolbar")})'),
     { url: 'apidoc://app/', node: 'undefined', require: 'undefined', toolbar: true })
   const security = await main.evaluate(`(() => { const w=process.mainModule.require('electron').BrowserWindow.getAllWindows()[0]; const p=w.webContents.getLastWebPreferences(); return {sandbox:p.sandbox,isolated:p.contextIsolation,node:p.nodeIntegration} })()`)
@@ -110,11 +80,17 @@ try {
   await closeAndCancel()
   assert.equal(await renderer.evaluate('document.querySelector(".url-input").value'), '{{baseUrl}}/desktop-smoke')
 
+  // 실제 생성·IPC·파일 읽기는 통과시키고 네이티브 선택 응답만 테스트 폴더로 대체합니다.
+  await main.evaluate(`desktopSmoke.originalOpen=process.mainModule.require('electron').dialog.showOpenDialog;desktopSmoke.workspaceFolder=process.mainModule.require('node:fs').mkdtempSync(process.mainModule.require('node:path').join(process.mainModule.require('node:os').tmpdir(),'apidoc-smoke-workspace-'));process.mainModule.require('electron').dialog.showOpenDialog=async()=>({canceled:false,filePaths:[desktopSmoke.workspaceFolder]});true`)
   await click('.workspace-name')
   // 메뉴 선택 후 생성 폼은 실제 UI 경로로 진행합니다.
   await click('.workspace-create-action')
   await input('.workspace-name-input', 'Desktop smoke workspace')
   await click('.workspace-create-submit')
+  for (let i = 0; i < 100; i++) {
+    if (await renderer.evaluate(`document.querySelector('.workspace-session:not([hidden]) .workspace-selected-name')?.textContent==='Desktop smoke workspace'`)) { break }
+    await delay(100)
+  }
   assert.equal(await renderer.evaluate('document.querySelector(".workspace-session:not([hidden]) .request-toolbar")===null'), true)
   await closeAndCancel()
   assert.match(await main.evaluate('desktopSmoke.dialogs.at(-1).detail'), /미저장/)
@@ -143,7 +119,7 @@ try {
   console.log('Desktop smoke passed: packaged UI, runtime isolation, CSP, missing asset, new-window denial, running request, environment/collection drafts, unsaved cancel, hidden workspace, single instance, confirmed quit.')
 } finally {
   if (dialogPatched) {
-    try { await main.evaluate(`process.mainModule.require('electron').dialog.showMessageBox=desktopSmoke.original;true`) } catch { /* 종료된 앱에는 복구할 핸들이 없습니다. */ }
+    try { await main.evaluate(`process.mainModule.require('electron').dialog.showMessageBox=desktopSmoke.original;if(desktopSmoke.originalOpen)process.mainModule.require('electron').dialog.showOpenDialog=desktopSmoke.originalOpen;true`) } catch { /* 종료된 앱에는 복구할 핸들이 없습니다. */ }
   }
   renderer.close()
   main.close()

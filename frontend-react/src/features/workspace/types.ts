@@ -82,3 +82,5 @@ export type WorkspaceTab = {
   execution: ExecutionState
   requestSnapshot: RequestSnapshot | null
 }
+
+export type CreateWorkspaceResult = { status: 'created' } | { status: 'cancelled' } | { status: 'failed'; message: string }

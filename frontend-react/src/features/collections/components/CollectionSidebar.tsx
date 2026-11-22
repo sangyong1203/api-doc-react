@@ -9,6 +9,7 @@ import type { SampleRequest, WorkspaceCollection, WorkspaceFolder } from '@/feat
 import type { CollectionDeleteTarget, CollectionDialogTarget } from '../types'
 
 type CollectionSidebarProps = {
+  readOnly?: boolean
   collections: WorkspaceCollection[]
   folders: WorkspaceFolder[]
   requests: SampleRequest[]
@@ -46,7 +47,7 @@ function CollectionActions({ name, onEdit, onDelete, onAddFolder, onAddApi }: Co
   )
 }
 
-export function CollectionSidebar({ collections, folders, requests, selectedId, onSelect, onEdit, onDelete }: CollectionSidebarProps) {
+export function CollectionSidebar({ collections, folders, requests, selectedId, onSelect, onEdit, onDelete, readOnly = false }: CollectionSidebarProps) {
   const [search, setSearch] = useState('')
   const [collapsed, setCollapsed] = useState<string[]>([])
   const term = search.trim().toLowerCase()
@@ -72,9 +73,9 @@ export function CollectionSidebar({ collections, folders, requests, selectedId, 
           variant={selectedId === request.id ? 'secondary' : 'ghost'} aria-current={selectedId === request.id ? 'page' : undefined} onClick={() => onSelect(request)}>
           <HttpMethodBadge method={request.method} /><span className="collection-request-name">{request.name}</span>
         </Button>
-        <CollectionActions name={request.name}
+        {!readOnly && <CollectionActions name={request.name}
           onEdit={() => onEdit({ kind: 'api', collectionId: request.collectionId, folderId: request.folderId, request })}
-          onDelete={() => onDelete({ kind: 'api', id: request.id, name: request.name })} />
+          onDelete={() => onDelete({ kind: 'api', id: request.id, name: request.name })} />}
       </div>
     )
   }
@@ -85,7 +86,7 @@ export function CollectionSidebar({ collections, folders, requests, selectedId, 
         <span>컬렉션</span>
         <div className="collection-heading-actions flex items-center gap-2">
           <Badge variant="secondary">{requests.length} APIs</Badge>
-          <Button className="collection-add" variant="ghost" size="icon-xs" aria-label="컬렉션 추가" onClick={() => addItem({ kind: 'collection' })}><Plus aria-hidden="true" /></Button>
+          {!readOnly && <Button className="collection-add" variant="ghost" size="icon-xs" aria-label="컬렉션 추가" onClick={() => addItem({ kind: 'collection' })}><Plus aria-hidden="true" /></Button>}
         </div>
       </div>
       <div className="collection-search-field relative">
@@ -103,11 +104,11 @@ export function CollectionSidebar({ collections, folders, requests, selectedId, 
                 <Button className="collection-toggle min-w-0 flex-1 justify-start text-xs aria-expanded:bg-transparent" variant="ghost" aria-expanded={expanded} onClick={() => toggle(collection.id)}>
                   {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}<Folder aria-hidden="true" /><span className="truncate">{collection.name}</span>
                 </Button>
-                <CollectionActions name={collection.name}
+                {!readOnly && <CollectionActions name={collection.name}
                   onAddApi={() => addItem({ kind: 'api', collectionId: collection.id, folderId: null })}
                   onAddFolder={() => addItem({ kind: 'folder', collectionId: collection.id })}
                   onEdit={() => onEdit({ kind: 'collection', collection })}
-                  onDelete={() => onDelete({ kind: 'collection', id: collection.id, name: collection.name })} />
+                  onDelete={() => onDelete({ kind: 'collection', id: collection.id, name: collection.name })} />}
               </div>
               {expanded && (
                 <div className="collection-children pl-2">
@@ -121,24 +122,24 @@ export function CollectionSidebar({ collections, folders, requests, selectedId, 
                           <Button className="folder-toggle min-w-0 flex-1 text-xs aria-expanded:bg-transparent" variant="ghost" aria-expanded={folderExpanded} onClick={() => toggle(folder.id)}>
                             {folderExpanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}<Folder aria-hidden="true" /><span className="truncate">{folder.name}</span>
                           </Button>
-                          <CollectionActions name={folder.name}
+                          {!readOnly && <CollectionActions name={folder.name}
                             onAddApi={() => addItem({ kind: 'api', collectionId: collection.id, folderId: folder.id })}
                             onEdit={() => onEdit({ kind: 'folder', collectionId: collection.id, folder })}
-                            onDelete={() => onDelete({ kind: 'folder', id: folder.id, name: folder.name })} />
+                            onDelete={() => onDelete({ kind: 'folder', id: folder.id, name: folder.name })} />}
                         </div>
                         {folderExpanded && folderRequests.map(renderRequest)}
                         {folderExpanded && !term && folderRequests.length === 0 && <p className="folder-empty px-4 py-2 text-xs text-muted-foreground">API가 없습니다.</p>}
                       </div>
                     )
                   })}
-                  {!term && collectionFolders.length === 0 && collectionRequests.length === 0 && <p className="collection-empty px-4 py-2 text-xs text-muted-foreground">폴더나 API를 추가하세요.</p>}
+                  {!term && collectionFolders.length === 0 && collectionRequests.length === 0 && <p className="collection-empty px-4 py-2 text-xs text-muted-foreground">{readOnly ? '등록된 폴더나 API가 없습니다.' : '폴더나 API를 추가하세요.'}</p>}
                 </div>
               )}
             </section>
           )
         })}
         {term && filtered.length === 0 && <p className="sidebar-empty text-xs text-muted-foreground" role="status">검색 결과가 없습니다.</p>}
-        {collections.length === 0 && <p className="sidebar-empty text-xs text-muted-foreground">컬렉션을 추가해 시작하세요.</p>}
+        {collections.length === 0 && <p className="sidebar-empty text-xs text-muted-foreground">{readOnly ? '이 폴더에 컬렉션이 없습니다. 컬렉션 편집·저장은 준비 중입니다.' : '컬렉션을 추가해 시작하세요.'}</p>}
       </nav>
     </aside>
   )

@@ -25,6 +25,10 @@ import { EnvironmentPicker } from '@/features/environments/components/Environmen
 import { createSampleResponse, SAMPLE_COLLECTIONS, SAMPLE_FOLDERS, SAMPLE_REQUESTS } from '@/features/workspace/fixtures/sampleWorkspace'
 import type { RequestField, SampleRequest, Workspace, WorkspaceTab } from '@/features/workspace/types'
 import '@/styles/workspace.css'
+import { decodeFolderWorkspace } from '@/features/workspace/storageModel'
+import type { FolderWorkspace } from '@/features/workspace/storageModel'
+import type { CreateWorkspaceResult } from '@/features/workspace/types'
+import { Badge } from '@/components/ui/badge'
 import { useAppCloseLifecycle, useAppCloseProtection } from '@/hooks/useAppCloseProtection'
 
 function createInitialPreset(request: SampleRequest): PayloadPreset {
@@ -44,21 +48,66 @@ function copyActiveFields(fields: RequestField[]): Array<Pick<RequestField, 'nam
 
 const INITIAL_WORKSPACE: Workspace = { id: 'robot-workspace', name: 'Robot workspace' }
 
+type SessionWorkspace = Workspace & { loaded?: FolderWorkspace }
+
 export function WorkspacePage() {
   useAppCloseLifecycle()
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([INITIAL_WORKSPACE])
+  const [workspaces, setWorkspaces] = useState<SessionWorkspace[]>([INITIAL_WORKSPACE])
   const [selectedId, setSelectedId] = useState(INITIAL_WORKSPACE.id)
 
-  function createWorkspace(name: string): string | null {
+  const [busy, setBusy] = useState(false)
+  const pending = useRef(false)
+  const [folderError, setFolderError] = useState<string | null>(null)
+  const native = Boolean(window.apidocDesktop?.workspace)
+  useAppCloseProtection(false, busy)
+
+  async function folderAction(action: 'open' | 'create', name = ''): Promise<CreateWorkspaceResult> {
+    const desktop = window.apidocDesktop?.workspace
+    if (!desktop || pending.current) { return { status: 'failed', message: '폴더 연결을 진행할 수 없습니다. 잠시 후 다시 시도해 주세요.' } }
+    pending.current = true; setBusy(true); setFolderError(null)
+    try {
+      const requestId = crypto.randomUUID()
+      const result = action === 'open' ? await desktop.open({ requestId, payload: { source: 'dialog' } }) : await desktop.create({ requestId, payload: { name } })
+      if (!result.ok) { return { status: 'failed', message: result.error.message } }
+      if (result.data.status === 'cancelled') { return { status: 'cancelled' } }
+      const { connection, snapshot } = result.data
+      const id = `${connection.localFolderId}:${connection.workspaceId}`
+      const existing = workspaces.find(item => item.id === id)
+      if (existing) {
+        if (existing.loaded?.connection.handle !== connection.handle) { await desktop.release({ requestId: crypto.randomUUID(), payload: { handle: connection.handle } }) }
+        setSelectedId(id)
+        if (existing.loaded?.snapshot.revision !== snapshot.revision) { setFolderError('이미 열려 있는 작업 공간입니다. 현재 편집은 유지하며 변경된 파일을 자동 적용하지 않았습니다.') }
+      } else {
+        try {
+          const loaded = decodeFolderWorkspace(connection, snapshot)
+          setWorkspaces(current => [...current, { ...loaded.workspace, loaded }])
+          setSelectedId(loaded.workspace.id)
+        } catch {
+          await desktop.release({ requestId: crypto.randomUUID(), payload: { handle: connection.handle } })
+          return { status: 'failed', message: '작업 공간의 화면 데이터를 구성할 수 없습니다.' }
+        }
+      }
+      return { status: 'created' }
+    } catch { return { status: 'failed', message: '작업 폴더 연결을 확인할 수 없습니다. 기존 화면은 유지했습니다.' } }
+    finally { pending.current = false; setBusy(false) }
+  }
+
+  async function openWorkspace() {
+    const result = await folderAction('open')
+    if (result.status === 'failed') { setFolderError(result.message) }
+  }
+
+  async function createWorkspace(name: string): Promise<CreateWorkspaceResult> {
     const trimmedName = name.trim()
-    if (!trimmedName) { return '작업 공간 이름을 입력하세요.' }
+    if (!trimmedName) { return { status: 'failed', message: '작업 공간 이름을 입력하세요.' } }
+    if (native) { return folderAction('create', trimmedName) }
     if (workspaces.some((workspace) => workspace.name.toLowerCase() === trimmedName.toLowerCase())) {
-      return '같은 이름의 작업 공간이 있습니다.'
+      return { status: 'failed', message: '같은 이름의 작업 공간이 있습니다.' }
     }
     const workspace = { id: crypto.randomUUID(), name: trimmedName }
     setWorkspaces((current) => [...current, workspace])
     setSelectedId(workspace.id)
-    return null
+    return { status: 'created' }
   }
 
   return (
@@ -66,7 +115,7 @@ export function WorkspacePage() {
       {workspaces.map((workspace) => (
         // 편집 화면을 유지해 미저장 초안·파일 선택·열린 탭과 기능별 로컬 상태를 보존합니다.
         <div className="workspace-session" key={workspace.id} hidden={workspace.id !== selectedId}>
-          <WorkspaceSession workspace={workspace} workspaces={workspaces} onSelect={setSelectedId} onCreate={createWorkspace} />
+          <WorkspaceSession workspace={workspace} workspaces={workspaces} onSelect={setSelectedId} onCreate={createWorkspace} onOpen={() => { void openWorkspace() }} native={native} busy={busy} folderError={folderError} />
         </div>
       ))}
     </div>
@@ -74,22 +123,27 @@ export function WorkspacePage() {
 }
 
 type WorkspaceSessionProps = {
-  workspace: Workspace
+  workspace: SessionWorkspace
   workspaces: Workspace[]
   onSelect: (id: string) => void
-  onCreate: (name: string) => string | null
+  onCreate: (name: string) => Promise<CreateWorkspaceResult>
+  onOpen: () => void
+  native: boolean
+  busy: boolean
+  folderError: string | null
 }
 
-function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: WorkspaceSessionProps) {
-  const initialRequests = workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_REQUESTS : []
+function WorkspaceSession({ workspace, workspaces, onSelect, onCreate, onOpen, native, busy, folderError }: WorkspaceSessionProps) {
+  const loaded = workspace.loaded
+  const initialRequests = loaded?.requests ?? (workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_REQUESTS : [])
   const [documentOpen, setDocumentOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyByApi, setHistoryByApi] = useState<Record<string, ApiSaveHistory[]>>({})
-  const [collections, setCollections] = useState(workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_COLLECTIONS : [])
-  const [folders, setFolders] = useState(workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_FOLDERS : [])
+  const [collections, setCollections] = useState(loaded?.collections ?? (workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_COLLECTIONS : []))
+  const [folders, setFolders] = useState(loaded?.folders ?? (workspace.id === INITIAL_WORKSPACE.id ? SAMPLE_FOLDERS : []))
   const [requests, setRequests] = useState(initialRequests)
-  const [presetsByApi, setPresetsByApi] = useState<Record<string, PayloadPreset[]>>(() => Object.fromEntries(initialRequests.map((request) => [request.id, [createInitialPreset(request)]])))
-  const [defaultPresets, setDefaultPresets] = useState<Record<string, string | null>>({})
+  const [presetsByApi, setPresetsByApi] = useState<Record<string, PayloadPreset[]>>(() => loaded?.presetsByApi ?? Object.fromEntries(initialRequests.map((request) => [request.id, [createInitialPreset(request)]])))
+  const [defaultPresets, setDefaultPresets] = useState<Record<string, string | null>>(loaded?.defaultPresets ?? {})
   const [requestError, setRequestError] = useState<{ id: string; message: string } | null>(null)
   const [confirmation, setConfirmation] = useState<{
     title: string
@@ -99,7 +153,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
   } | null>(null)
   const [editTarget, setEditTarget] = useState<CollectionDialogTarget | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CollectionDeleteTarget | null>(null)
-  const [tabs, setTabs] = useState<WorkspaceTab[]>(() => initialRequests[0] ? [createTab(initialRequests[0])] : [])
+  const [tabs, setTabs] = useState<WorkspaceTab[]>(() => initialRequests[0] ? [createTab(initialRequests[0], loaded?.presetsByApi[initialRequests[0].id]?.find(p => p.id === loaded.defaultPresets[initialRequests[0].id]))] : [])
   const [activeId, setActiveId] = useState<string | null>(initialRequests[0]?.id ?? null)
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const activeTab = tabs.find((tab) => tab.request.id === activeId)
@@ -279,7 +333,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
 
   // 요청 ID별 타이머를 관리해 탭 전환·취소·닫기 후 다른 탭에 결과가 섞이지 않게 합니다.
   function runSample() {
-    if (!activeTab || timers.current.has(activeTab.request.id)) {
+    if (!activeTab || loaded || timers.current.has(activeTab.request.id)) {
       return
     }
     const { request } = activeTab
@@ -317,7 +371,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
   }
 
   function saveRequest() {
-    if (!activeTab) { return }
+    if (!activeTab || loaded) { return }
     const error = validateRequest(activeTab.request)
     if (error) { setRequestError({ id: activeTab.request.id, message: error }); return }
     const entry: ApiSaveHistory = {
@@ -355,12 +409,15 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
       <header className="workspace-header">
         <div className="workspace-brand"><Braces aria-hidden="true" />API Doc</div>
         <Separator orientation="vertical" className="header-divider" />
-        <WorkspacePicker workspace={workspace} workspaces={workspaces} onSelect={onSelect} onCreate={onCreate} />
-        <EnvironmentPicker />
+        <WorkspacePicker workspace={workspace} workspaces={workspaces} onSelect={onSelect} onCreate={onCreate} onOpen={onOpen} native={native} busy={busy} />
+        <Badge className="workspace-storage-badge" variant="secondary">{loaded ? '폴더 연결' : '샘플 · 메모리'}</Badge>
+        <EnvironmentPicker initialEnvironments={loaded?.environments} readOnly={Boolean(loaded)} />
       </header>
       <Separator />
+      {folderError && <p className="workspace-folder-error px-4 py-2 text-sm text-error" role="alert">{folderError}</p>}
+      {loaded && <p className="workspace-storage-notice px-4 py-2 text-xs text-muted-foreground" role="status">폴더의 파일을 불러왔습니다. 편집은 현재 화면에만 유지하며 파일 저장·실제 호출은 아직 연결하지 않았습니다.{loaded.hasSecretRefs ? ' 비밀 참조는 미입력으로 표시하며 실제값을 복원하지 않았습니다.' : ''}</p>}
       <div className="workspace-body">
-        <CollectionSidebar collections={collections} folders={folders} requests={requests} selectedId={activeId ?? undefined} onSelect={openRequest} onEdit={beginEdit} onDelete={setDeleteTarget} />
+        <CollectionSidebar readOnly={Boolean(loaded)} collections={collections} folders={folders} requests={requests} selectedId={activeId ?? undefined} onSelect={openRequest} onEdit={beginEdit} onDelete={setDeleteTarget} />
         <Separator orientation="vertical" className="workspace-sidebar-divider" />
         <Tabs className="workspace-main" value={activeId ?? ''} onValueChange={setActiveId}>
           <div className="workspace-tab-bar">
@@ -370,6 +427,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
           {activeTab ? (
             <TabsContent className="workspace-content" key={activeTab.request.id} value={activeTab.request.id}>
               <RequestToolbar
+                fileWorkspace={Boolean(loaded)}
                 request={activeTab.request}
                 collectionName={collections.find((item) => item.id === activeTab.request.collectionId)?.name ?? ''}
                 folderName={folders.find((item) => item.id === activeTab.request.folderId)?.name}
@@ -387,7 +445,7 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
                 <RequestEditor
                   documentationEditor={<ApiDocumentationEditor request={activeTab.request}
                     onChange={(request) => { setRequestError(null); updateTab(request.id, (tab) => ({ ...tab, request })) }} />}
-                  payloadPicker={<PayloadPicker presets={presetsByApi[activeTab.request.id] ?? []} selectedId={activeTab.selectedPresetId}
+                  payloadPicker={<PayloadPicker readOnly={Boolean(loaded)} presets={presetsByApi[activeTab.request.id] ?? []} selectedId={activeTab.selectedPresetId}
                     defaultId={defaultPresets[activeTab.request.id] ?? presetsByApi[activeTab.request.id]?.[0]?.id ?? null} onSelect={selectPreset} onAdd={addPreset} onDelete={deletePreset}
                     onDefault={(id) => setDefaultPresets((current) => ({ ...current, [activeTab.request.id]: id }))}
                     onRename={(id, name) => setPresetsByApi((current) => ({ ...current, [activeTab.request.id]: (current[activeTab.request.id] ?? []).map((preset) => preset.id === id ? { ...preset, name } : preset) }))} />}
@@ -406,8 +464,8 @@ function WorkspaceSession({ workspace, workspaces, onSelect, onCreate }: Workspa
             <Empty className="workspace-empty">
               <EmptyHeader>
                 <EmptyMedia variant="icon"><FolderOpen aria-hidden="true" /></EmptyMedia>
-                <EmptyTitle>작업할 API를 선택하세요</EmptyTitle>
-                <EmptyDescription>컬렉션에서 API를 선택하면 편집 탭이 열립니다.</EmptyDescription>
+                <EmptyTitle>{loaded && requests.length === 0 ? '이 작업 공간에 API가 없습니다' : '작업할 API를 선택하세요'}</EmptyTitle>
+                <EmptyDescription>{loaded && requests.length === 0 ? '다른 작업 폴더를 열거나 공유 파일을 준비한 뒤 다시 열어 주세요.' : '컬렉션에서 API를 선택하면 편집 탭이 열립니다.'}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}

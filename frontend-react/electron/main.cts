@@ -4,6 +4,10 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { AppCloseState } from '../src/types/desktop.js'
+import { openPersonalDatabase } from './personal-database.cjs'
+import type { PersonalDatabase } from './personal-database.cjs'
+import { WorkspaceService, workspaceResult } from './workspace-service.cjs'
+import { WorkspaceError } from './workspace-format.cjs'
 import { isAppCloseState, isTrustedAppUrl, isTrustedIpcSender } from './ipc-security.cjs'
 
 const APP_ORIGIN = 'apidoc://app'
@@ -19,6 +23,35 @@ let mainWindow: BrowserWindow | null = null
 let exitApproved = false
 let pendingClose: { id: string; resolve: (state: AppCloseState | null) => void } | null = null
 let closeInProgress = false
+let personalDatabase: Promise<PersonalDatabase> | undefined
+let workspaceService: Promise<WorkspaceService> | undefined
+
+function getWorkspaceService(): Promise<WorkspaceService> {
+  if (!workspaceService) {
+    personalDatabase = openPersonalDatabase({ userData: app.getPath('userData'), appVersion: app.getVersion() })
+    workspaceService = personalDatabase.then(database => new WorkspaceService(database, async () => {
+      const window = mainWindow
+      if (!window || window.isDestroyed()) { throw new WorkspaceError('WORKSPACE_NOT_OPEN') }
+      const result = await dialog.showOpenDialog(window, { title: '작업 폴더 선택', properties: ['openDirectory', 'createDirectory'] })
+      return result.canceled ? null : result.filePaths[0] ?? null
+    }, owner => !closeInProgress && Boolean(mainWindow && !mainWindow.isDestroyed()
+      && mainWindow.webContents.id === owner.windowId && mainWindow.webContents.mainFrame === owner.frame)))
+  }
+  return workspaceService
+}
+
+function registerWorkspaceIpc() {
+  for (const operation of ['open', 'create', 'snapshot', 'release'] as const) {
+    ipcMain.handle(`workspace:${operation}`, (event, request: unknown) => {
+      const trusted = !closeInProgress && isTrustedIpcSender(event, mainWindow?.webContents ?? null, devUrl)
+      const owner = { windowId: event.sender.id, frame: event.senderFrame! }
+      return workspaceResult(request, trusted, async payload => {
+        const service = await getWorkspaceService()
+        return service[operation](owner, payload)
+      })
+    })
+  }
+}
 
 function getDevUrl(): string | null {
   if (app.isPackaged) { return null }
@@ -95,6 +128,7 @@ async function requestClose() {
       })
       if (result.response !== 1) { return }
     }
+    await personalDatabase?.then(database => database.close()).catch(() => {})
     exitApproved = true
     window.destroy()
     app.quit()
@@ -113,7 +147,11 @@ function createWindow() {
   window.webContents.on('will-navigate', (event, url) => { if (!isAppUrl(url)) { event.preventDefault() } })
   window.webContents.on('will-attach-webview', (event) => event.preventDefault())
   window.on('close', (event) => { if (!exitApproved) { event.preventDefault(); void requestClose() } })
-  window.on('closed', () => { mainWindow = null })
+  const ownerWindowId = window.webContents.id
+  const releaseHandles = () => { void workspaceService?.then(service => service.releaseOwner(ownerWindowId)).catch(() => {}) }
+  window.webContents.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => { if (isMainFrame && !isInPlace) { releaseHandles() } })
+  window.webContents.on('render-process-gone', releaseHandles)
+  window.on('closed', () => { releaseHandles(); mainWindow = null })
   window.once('ready-to-show', () => window.show())
   const load = devUrl ? window.loadURL(devUrl) : window.loadURL(`${APP_ORIGIN}/`)
   void load.catch((error: unknown) => {
@@ -137,6 +175,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => app.quit())
   void app.whenReady().then(() => {
     registerAppProtocol()
+    registerWorkspaceIpc()
     ipcMain.on('app:close-state', (event, requestId: unknown, state: unknown) => {
       if (!isTrustedIpcSender(event, mainWindow?.webContents ?? null, devUrl)
         || typeof requestId !== 'string' || requestId !== pendingClose?.id || !isAppCloseState(state)) { return }

@@ -89,6 +89,7 @@ export function openPersonalDatabase(options: { userData: string; appVersion: st
         ready = true
         const personal: PersonalDataClient = {
           rememberWorkspace: input => request('rememberWorkspace', input),
+          workspacePath: input => request('workspacePath', input),
           preferences: input => request('preferences', input),
           savePreferences: input => request('savePreferences', input),
           drafts: input => request('drafts', input),

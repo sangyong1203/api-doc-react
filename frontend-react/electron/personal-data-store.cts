@@ -53,6 +53,13 @@ export class PersonalDataStore {
     try {
       switch (operation) {
         case 'rememberWorkspace': return this.rememberWorkspace(input)
+        case 'workspacePath': {
+          const data = object(input, ['localFolderId']); uuid(data.localFolderId)
+          const row = this.database.prepare(`SELECT f.canonical_path, w.workspace_id FROM local_folders f JOIN workspace_links w ON w.local_folder_id = f.local_folder_id
+            WHERE f.local_folder_id = ? ORDER BY w.last_opened_at DESC, w.workspace_id DESC LIMIT 1`).get(data.localFolderId)
+          if (!row) { throw new PersonalDatabaseError('NOT_FOUND') }
+          return { canonicalPath: String(row.canonical_path), workspaceId: String(row.workspace_id) }
+        }
         case 'preferences': return this.preferences(input)
         case 'savePreferences': return this.savePreferences(input)
         case 'drafts': return this.drafts(input)

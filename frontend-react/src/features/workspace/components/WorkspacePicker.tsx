@@ -1,3 +1,4 @@
+import type { CreateWorkspaceResult } from '../types'
 import { useState } from 'react'
 import { Check, ChevronDown, FolderOpen, Plus } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
@@ -9,10 +10,13 @@ type Props = {
   workspace: Workspace
   workspaces: Workspace[]
   onSelect: (id: string) => void
-  onCreate: (name: string) => string | null
+  onCreate: (name: string) => Promise<CreateWorkspaceResult>
+  onOpen: () => void
+  native: boolean
+  busy: boolean
 }
 
-export function WorkspacePicker({ workspace, workspaces, onSelect, onCreate }: Props) {
+export function WorkspacePicker({ workspace, workspaces, onSelect, onCreate, onOpen, native, busy }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
 
@@ -20,7 +24,7 @@ export function WorkspacePicker({ workspace, workspaces, onSelect, onCreate }: P
     <div className="workspace-picker min-w-0">
       <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenu.Trigger asChild>
-          <Button className="workspace-name max-w-[min(55vw,320px)] text-sm" variant="ghost" size="sm" aria-label="작업 공간 선택">
+          <Button className="workspace-name max-w-[min(55vw,320px)] text-sm" variant="ghost" size="sm" aria-label="작업 공간 선택" disabled={busy}>
             <FolderOpen className="shrink-0" aria-hidden="true" />
             <span className="workspace-selected-name truncate">{workspace.name}</span>
             <ChevronDown className="shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -41,16 +45,19 @@ export function WorkspacePicker({ workspace, workspaces, onSelect, onCreate }: P
               ))}
             </DropdownMenu.RadioGroup>
             <DropdownMenu.Separator className="workspace-menu-divider my-1 h-px bg-border" />
+            {native && <DropdownMenu.Item className="workspace-open-action flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground" onSelect={onOpen}>
+              <FolderOpen className="size-4" aria-hidden="true" />폴더 열기
+            </DropdownMenu.Item>}
             <DropdownMenu.Item className="workspace-create-action flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground" onSelect={() => setCreateOpen(true)}>
               <Plus className="size-4" aria-hidden="true" />새 작업 공간
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
-      {createOpen && <WorkspaceCreateDialog onClose={() => setCreateOpen(false)} onCreate={(name) => {
-        const error = onCreate(name)
-        if (!error) { setCreateOpen(false) }
-        return error
+      {createOpen && <WorkspaceCreateDialog native={native} onClose={() => setCreateOpen(false)} onCreate={async (name) => {
+        const result = await onCreate(name)
+        if (result.status === 'created') { setCreateOpen(false) }
+        return result
       }} />}
     </div>
   )

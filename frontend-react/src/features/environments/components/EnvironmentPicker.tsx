@@ -10,9 +10,9 @@ const INITIAL_ENVIRONMENTS: Environment[] = [
   { id: 'dev', name: 'Development', variables: [] },
 ]
 
-export function EnvironmentPicker() {
-  const [environments, setEnvironments] = useState(INITIAL_ENVIRONMENTS)
-  const [selectedId, setSelectedId] = useState<string | null>('local')
+export function EnvironmentPicker({ initialEnvironments = INITIAL_ENVIRONMENTS, readOnly = false }: { initialEnvironments?: Environment[]; readOnly?: boolean }) {
+  const [environments, setEnvironments] = useState(initialEnvironments)
+  const [selectedId, setSelectedId] = useState<string | null>(initialEnvironments[0]?.id ?? null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const selected = environments.find((environment) => environment.id === selectedId)
 
@@ -37,9 +37,9 @@ export function EnvironmentPicker() {
               {environments.length === 0 && <p className="environment-menu-empty px-2 py-2 text-xs text-muted-foreground">등록된 환경이 없습니다.</p>}
             </DropdownMenu.RadioGroup>
             <DropdownMenu.Separator className="environment-menu-divider my-1 h-px bg-border" />
-            <DropdownMenu.Item className="environment-settings-action flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground" onSelect={() => setSettingsOpen(true)}>
+            {!readOnly && <DropdownMenu.Item className="environment-settings-action flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground" onSelect={() => setSettingsOpen(true)}>
               <Settings2 className="size-4" aria-hidden="true" />환경 설정
-            </DropdownMenu.Item>
+            </DropdownMenu.Item>}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>

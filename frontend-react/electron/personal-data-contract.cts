@@ -13,6 +13,7 @@ export type PersonalOperations = {
     input: { canonicalPath: string; pathKey: string; workspaceId: string; displayName: string }
     output: LocalWorkspace
   }
+  workspacePath: { input: { localFolderId: string }; output: { canonicalPath: string; workspaceId: string } }
   preferences: { input: { scope: PreferenceScope }; output: PersonalRecord | null }
   savePreferences: { input: { scope: PreferenceScope; expectedRevision: number | null; json: string }; output: PersonalRecord }
   drafts: { input: { scope: LocalWorkspace; apiId: string }; output: DraftSummary[] }
@@ -39,5 +40,5 @@ export type PersonalOperation = keyof PersonalOperations
  */
 export type PersonalDataClient = { [K in PersonalOperation]: (input: PersonalOperations[K]['input']) => Promise<PersonalOperations[K]['output']> }
 export const PERSONAL_OPERATIONS: PersonalOperation[] = [
-  'rememberWorkspace', 'preferences', 'savePreferences', 'drafts', 'draft', 'saveDraft', 'removeDraft', 'recordHistory', 'history', 'historyEntry',
+  'rememberWorkspace', 'workspacePath', 'preferences', 'savePreferences', 'drafts', 'draft', 'saveDraft', 'removeDraft', 'recordHistory', 'history', 'historyEntry',
 ]

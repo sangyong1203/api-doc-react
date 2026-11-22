@@ -8,6 +8,7 @@ import type { PayloadPreset } from '../types'
 import { useAppCloseProtection } from '@/hooks/useAppCloseProtection'
 
 type Props = {
+  readOnly?: boolean
   presets: PayloadPreset[]
   selectedId: string | null
   defaultId: string | null
@@ -18,7 +19,7 @@ type Props = {
   onDelete: (id: string) => void
 }
 
-export function PayloadPicker({ presets, selectedId, defaultId, onSelect, onDefault, onAdd, onRename, onDelete }: Props) {
+export function PayloadPicker({ presets, selectedId, defaultId, onSelect, onDefault, onAdd, onRename, onDelete, readOnly = false }: Props) {
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -50,13 +51,13 @@ export function PayloadPicker({ presets, selectedId, defaultId, onSelect, onDefa
                 <Button size="icon-xs" variant="ghost" aria-label="이름 저장" onClick={rename}><Check /></Button><Button size="icon-xs" variant="ghost" aria-label="이름 편집 취소" onClick={() => { setEditingId(null); setError('') }}><X /></Button>
               </> : <>
                 <Button className="payload-select h-6 min-w-0 flex-1 shrink justify-start px-1 text-xs hover:bg-transparent dark:hover:bg-transparent" variant="ghost" size="sm" aria-pressed={selectedId === item.id} onClick={() => { onSelect(item.id); setOpen(false) }}><span className="truncate">{item.name}</span>{defaultId === item.id && <Badge className="payload-default-badge shrink-0 px-1 py-0 text-[10px]" variant="secondary">기본</Badge>}</Button>
-                {item.id && <><Button size="icon-xs" variant="ghost" aria-label={`${item.name} 이름 편집`} onClick={() => { setEditingId(item.id); setName(item.name); setError('') }}><Pencil /></Button><Button size="icon-xs" variant="ghost" aria-label={`${item.name} 삭제`} disabled={presets.length === 1} onClick={() => { setOpen(false); onDelete(item.id) }}><Trash2 /></Button></>}
+                {!readOnly && item.id && <><Button size="icon-xs" variant="ghost" aria-label={`${item.name} 이름 편집`} onClick={() => { setEditingId(item.id); setName(item.name); setError('') }}><Pencil /></Button><Button size="icon-xs" variant="ghost" aria-label={`${item.name} 삭제`} disabled={presets.length === 1} onClick={() => { setOpen(false); onDelete(item.id) }}><Trash2 /></Button></>}
               </>}
-              <Button className="payload-default shrink-0" size="icon-xs" variant="ghost" aria-label={`${item.name} 기본 세트 지정`} aria-pressed={defaultId === item.id} title="API를 열 때 기본으로 적용" onClick={() => onDefault(item.id)}><Star className={defaultId === item.id ? 'fill-primary text-primary' : 'text-muted-foreground'} /></Button>
+              {!readOnly && <Button className="payload-default shrink-0" size="icon-xs" variant="ghost" aria-label={`${item.name} 기본 세트 지정`} aria-pressed={defaultId === item.id} title="API를 열 때 기본으로 적용" onClick={() => onDefault(item.id)}><Star className={defaultId === item.id ? 'fill-primary text-primary' : 'text-muted-foreground'} /></Button>}
             </div>)}
           </div>
           {error && <p className="payload-name-error py-1 text-xs text-error" role="alert">{error}</p>}
-          <div className="payload-menu-footer mt-1 border-t pt-1"><Button className="w-full justify-start" variant="ghost" size="sm" onClick={onAdd}><Plus />입력 세트 추가</Button></div>
+          {!readOnly && <div className="payload-menu-footer mt-1 border-t pt-1"><Button className="w-full justify-start" variant="ghost" size="sm" onClick={onAdd}><Plus />입력 세트 추가</Button></div>}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

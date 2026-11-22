@@ -10,6 +10,7 @@ import type { HttpMethod, SampleRequest } from '@/features/workspace/types'
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
 
 type RequestToolbarProps = {
+  fileWorkspace?: boolean
   request: SampleRequest
   collectionName: string
   folderName?: string
@@ -23,7 +24,7 @@ type RequestToolbarProps = {
   onCancel: () => void
 }
 
-export function RequestToolbar({ request, collectionName, folderName, dirty, running, onChange, onSave, onDocument, onHistory, onRun, onCancel }: RequestToolbarProps) {
+export function RequestToolbar({ request, collectionName, folderName, dirty, running, onChange, onSave, onDocument, onHistory, onRun, onCancel, fileWorkspace = false }: RequestToolbarProps) {
   return (
     <section className="request-toolbar" aria-label="요청 정보 및 실행">
       <div className="request-heading">
@@ -43,13 +44,13 @@ export function RequestToolbar({ request, collectionName, folderName, dirty, run
         </div>
         <div className="request-save-controls">
           {dirty && <Badge variant="warning">미저장</Badge>}
-          <Button className="request-save text-xs" variant="outline" size="sm" disabled={!dirty} onClick={onSave}>
-            <Save aria-hidden="true" />저장
+          <Button className="request-save text-xs" variant="outline" size="sm" disabled={!dirty || fileWorkspace} onClick={onSave}>
+            <Save aria-hidden="true" />{fileWorkspace ? '저장 준비 중' : '저장'}
           </Button>
           <Button className="request-document text-xs" variant="outline" size="sm" onClick={onDocument}>
             <FileText aria-hidden="true" />문서
           </Button>
-          <Button className="request-history text-xs" variant="outline" size="sm" onClick={onHistory}>
+          <Button className="request-history text-xs" variant="outline" size="sm" disabled={fileWorkspace} onClick={onHistory}>
             <History aria-hidden="true" />이력
           </Button>
         </div>
@@ -80,8 +81,8 @@ export function RequestToolbar({ request, collectionName, folderName, dirty, run
               <Square aria-hidden="true" />취소
             </Button>
           ) : (
-            <Button className="request-send text-xs" onClick={onRun} disabled={!request.url.trim()}>
-              <Play aria-hidden="true" />실행
+            <Button className="request-send text-xs" onClick={onRun} disabled={!request.url.trim() || fileWorkspace}>
+              <Play aria-hidden="true" />{fileWorkspace ? '실행 준비 중' : '샘플 실행'}
             </Button>
           )}
         </div>
