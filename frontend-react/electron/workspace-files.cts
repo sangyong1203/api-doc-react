@@ -4,7 +4,7 @@ import { link, lstat, mkdir, open, readdir, realpath, rmdir, unlink } from 'node
 import path from 'node:path'
 import type { Stats } from 'node:fs'
 import type { ContentHash, WorkspaceSnapshot } from '../src/types/desktopData.js'
-import { validateWorkspaceBundle, WORKSPACE_LIMITS, WORKSPACE_UUID, WorkspaceError } from './workspace-format.cjs'
+import { isWorkspaceTemporary, validateWorkspaceBundle, WORKSPACE_LIMITS, WORKSPACE_UUID, WorkspaceError } from './workspace-format.cjs'
 
 export type WorkspaceRoot = { canonicalPath: string; device: number; inode: number }
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
@@ -24,17 +24,17 @@ export async function selectWorkspaceRoot(selectedPath: string): Promise<Workspa
   }
 }
 /** 루트 교체와 관리 트리의 링크를 반복 검사합니다. Windows reparse/경합의 실제 검증은 별도로 필요합니다. */
-async function rootCheck(root: WorkspaceRoot): Promise<void> {
+export async function rootCheck(root: WorkspaceRoot): Promise<void> {
   const stat = await lstat(root.canonicalPath)
   if (!stat.isDirectory() || stat.isSymbolicLink() || stat.dev !== root.device || stat.ino !== root.inode || await realpath(root.canonicalPath) !== root.canonicalPath) { throw new WorkspaceError('PATH_NOT_ALLOWED') }
 }
-async function directoryCheck(root: WorkspaceRoot, directory: string, expected?: Stats): Promise<Stats> {
+export async function directoryCheck(root: WorkspaceRoot, directory: string, expected?: Stats): Promise<Stats> {
   await rootCheck(root)
   const stat = await lstat(directory)
   if (!stat.isDirectory() || stat.isSymbolicLink() || (expected && !same(stat, expected)) || await realpath(directory) !== directory) { throw new WorkspaceError('PATH_NOT_ALLOWED') }
   return stat
 }
-async function readManagedFile(root: WorkspaceRoot, relative: string, parent: Stats): Promise<Buffer> {
+export async function readManagedFile(root: WorkspaceRoot, relative: string, parent: Stats): Promise<Buffer> {
   const file = path.join(root.canonicalPath, relative)
   const directory = path.dirname(file)
   await directoryCheck(root, directory, parent)
@@ -75,6 +75,7 @@ async function collect(root: WorkspaceRoot): Promise<{ files: Record<string, str
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const id = entry.name.endsWith('.json') ? entry.name.slice(0, -5) : ''
       if (entry.isSymbolicLink()) { throw new WorkspaceError('PATH_NOT_ALLOWED') }
+      if (entry.isFile() && isWorkspaceTemporary(entry.name)) { continue }
       if (!entry.isFile() || !WORKSPACE_UUID.test(id)) { throw new WorkspaceError('DOCUMENT_INVALID') }
       entries.push({ relative: `${kind}/${entry.name}`, parent: stat })
       if (entries.length > WORKSPACE_LIMITS.files) { throw new WorkspaceError('PAYLOAD_TOO_LARGE') }
@@ -92,20 +93,25 @@ async function collect(root: WorkspaceRoot): Promise<{ files: Record<string, str
   }
   return { files, hashes }
 }
+/** 복구 중인 불완전한 문서 관계도 원문으로 검사합니다. 공개 snapshot은 별도로 포맷을 검증합니다. */
+export async function readWorkspaceFiles(root: WorkspaceRoot) {
+  const first = await collect(root)
+  const second = await collect(root)
+  if (JSON.stringify(first.hashes) !== JSON.stringify(second.hashes)) { throw new WorkspaceError('FILE_CONFLICT') }
+  return { ...second, revision: hash(JSON.stringify(Object.entries(second.hashes))) }
+}
 /** 실제 바이트·파일 목록을 두 번 수집해 관측한 경합은 성공으로 반환하지 않습니다. 파일은 수정하지 않습니다. */
 export async function readWorkspaceSnapshot(root: WorkspaceRoot): Promise<WorkspaceSnapshot> {
   try {
-    const first = await collect(root)
-    const second = await collect(root)
-    if (JSON.stringify(first.hashes) !== JSON.stringify(second.hashes)) { throw new WorkspaceError('FILE_CONFLICT') }
-    const identity = validateWorkspaceBundle(second.files)
-    const documents = Object.entries(second.files).map(([relative, json]) => {
-      const data = { id: relative === 'workspace.json' ? identity.id : path.posix.basename(relative, '.json'), json, hash: second.hashes[relative] }
+    const { files, hashes, revision } = await readWorkspaceFiles(root)
+    const identity = validateWorkspaceBundle(files)
+    const documents = Object.entries(files).map(([relative, json]) => {
+      const data = { id: relative === 'workspace.json' ? identity.id : path.posix.basename(relative, '.json'), json, hash: hashes[relative] }
       if (relative === 'workspace.json') { return { ...data, kind: 'workspace' as const } }
       if (relative.startsWith('apis/')) { return { ...data, kind: 'api' as const } }
       return { ...data, kind: 'environment' as const }
     })
-    return { revision: hash(JSON.stringify(Object.entries(second.hashes))), workspace: documents.find(doc => doc.kind === 'workspace')!, apis: documents.filter(doc => doc.kind === 'api'), environments: documents.filter(doc => doc.kind === 'environment') }
+    return { revision, workspace: documents.find(doc => doc.kind === 'workspace')!, apis: documents.filter(doc => doc.kind === 'api'), environments: documents.filter(doc => doc.kind === 'environment') }
   } catch (error) {
     if (error instanceof WorkspaceError) { throw error }
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') { throw new WorkspaceError('FILE_CONFLICT') }

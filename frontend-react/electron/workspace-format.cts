@@ -3,14 +3,20 @@ import { object, requireData, text, uuid, validateHistory } from './personal-dat
 
 export const WORKSPACE_LIMITS = { fileBytes: 8 * 1024 * 1024, totalBytes: 64 * 1024 * 1024, files: 1000 }
 export const WORKSPACE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+export function isWorkspaceTemporary(name: string): boolean {
+  const match = /^\.apidoc-write-([0-9a-f-]+)-(workspace|api|environment)-([0-9a-f-]+)\.tmp$/.exec(name)
+  return Boolean(match && WORKSPACE_UUID.test(match[1]) && WORKSPACE_UUID.test(match[3]))
+}
 const messages: Partial<Record<DesktopErrorCode, string>> = {
   INVALID_REQUEST: '작업 폴더 요청을 확인해 주세요.', ACCESS_DENIED: '이 화면에서는 작업 폴더에 접근할 수 없습니다.',
   WORKSPACE_NOT_OPEN: '작업 폴더를 다시 열어 주세요.', WORKSPACE_NOT_FOUND: '작업 폴더를 찾을 수 없습니다.',
   WORKSPACE_ALREADY_EXISTS: '작업 공간 파일 또는 관리 폴더가 이미 있습니다. 기존 폴더 열기를 사용해 주세요.',
   DOCUMENT_INVALID: '작업 공간 파일의 형식·ID·참조 관계를 확인해 주세요.', FORMAT_UNSUPPORTED: '지원하지 않는 작업 공간 포맷입니다.',
-  PATH_NOT_ALLOWED: '작업 폴더 내부의 링크 또는 경로 변경으로 접근할 수 없습니다.', FILE_CONFLICT: '읽는 중 작업 폴더가 변경되었습니다. 다시 열어 주세요.',
+  PATH_NOT_ALLOWED: '작업 폴더 내부의 링크 또는 경로 변경으로 접근할 수 없습니다.', FILE_CONFLICT: '작업 폴더가 기준 내용과 다릅니다. 편집을 유지한 채 파일 상태를 확인해 주세요.',
   FILE_READ_FAILED: '작업 폴더를 읽을 수 없습니다. 권한과 파일 상태를 확인해 주세요.',
-  FILE_WRITE_FAILED: '작업 폴더 생성을 완료하지 못했습니다. 자동 반복하지 말고 폴더 상태를 확인해 주세요.',
+  FILE_WRITE_FAILED: '파일 쓰기를 완료하지 못했습니다. 자동 반복하지 말고 작업 상태를 확인해 주세요.',
+  WORKSPACE_RECOVERY_REQUIRED: '미완료 파일 작업을 확인해야 합니다. 새 저장 전에 복구 상태를 확인해 주세요.',
+  OPERATION_ID_REUSED: '같은 저장 작업 ID에 다른 내용을 사용할 수 없습니다.',
   PAYLOAD_TOO_LARGE: '작업 공간의 파일 크기 또는 개수 한도를 초과했습니다.', BUSY: '폴더 선택을 진행 중입니다.',
   DATABASE_UNAVAILABLE: '개인 저장소를 사용할 수 없어 폴더를 연결하지 못했습니다.', INTERNAL_ERROR: '작업 폴더 처리를 완료하지 못했습니다.',
 }
